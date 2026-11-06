@@ -147,3 +147,9 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Next.js
+next-env.d.ts
+
+# Written by scripts/notices.mjs at build time
+public/THIRD_PARTY_NOTICES.txt
