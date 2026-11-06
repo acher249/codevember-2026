@@ -824,6 +824,7 @@ function Scene() {
 
 const fold: DayDefinition = {
   camera: { position: [7.46, 5.33, -8.54], target: [-1.14, 2.03, -0.84], fov: 36 },
+  phonePills: ["shape"],
   extents: { centre: [0, 2, 0], radius: 24, floor: 0, color: "#ffe6c4" },
   look: { background: "#f6bd84", gi: 2.2, ao: 0.9, aoRadius: 0.4, vignette: 0.28, grain: 0.018 },
   settings: {

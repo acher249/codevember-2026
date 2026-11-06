@@ -469,6 +469,7 @@ function Scene() {
 
 const melt: DayDefinition = {
   camera: { position: [0, 4, 15.5], target: [0, 3.9, 0], fov: 36 },
+  phonePills: ["source"],
   extents: { centre: [0, 4, 0], radius: 26, floor: 0, color: "#d6e2ff" },
   // Nothing here is lit by bounced light: every colour comes from a traced reflection.
   passes: { bounce: false, haze: false },

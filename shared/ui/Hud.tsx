@@ -8,7 +8,7 @@ import type { QualityChoice } from "../engine/quality";
 import type { SettingsStore } from "../engine/settings";
 import type { QualityTier, Setting } from "../engine/types";
 import { resetPrompt, usePromptDone } from "../engine/prompt";
-import { sound, useSoundMuted } from "../engine/sound";
+import { sound, useSoundOn } from "../engine/sound";
 
 const pad = (day: number) => String(day).padStart(2, "0");
 
@@ -158,6 +158,33 @@ function Control({ name, setting, store }: { name: string; setting: Setting; sto
   );
 }
 
+function PhonePill({ name, setting, store }: { name: string; setting: Setting; store: SettingsStore }) {
+  const value = useSyncExternalStore(store.subscribe, () => store.get(name));
+  if (setting.type === "action") {
+    return (
+      <button type="button" className="cv-pill" onClick={() => store.trigger(name)}>
+        {setting.label}
+      </button>
+    );
+  }
+  if (setting.type !== "choice") return null;
+  return (
+    <>
+      {setting.options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={`cv-pill ${value === option.value ? "cv-pill-on" : ""}`}
+          aria-pressed={value === option.value}
+          onClick={() => store.set(name, option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </>
+  );
+}
+
 const CHOICES: { value: QualityChoice; label: string }[] = [
   { value: "auto", label: "Auto" },
   { value: "high", label: "High" },
@@ -171,6 +198,7 @@ type HudProps = {
   prompt?: { title: string; detail?: string };
   notes?: string;
   settings: SettingsStore | null;
+  phonePills?: string[];
   tier: QualityTier;
   choice: QualityChoice;
   onChoice: (choice: QualityChoice) => void;
@@ -178,7 +206,7 @@ type HudProps = {
   fpsRef: RefObject<HTMLElement | null>;
 };
 
-export function Hud({ day, hint, prompt, notes, settings, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
+export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
   const router = useRouter();
   const [panelOpen, setPanelOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -213,7 +241,7 @@ export function Hud({ day, hint, prompt, notes, settings, tier, choice, onChoice
     return () => window.removeEventListener("keydown", onKey);
   }, [next, previous, router]);
 
-  const muted = useSoundMuted();
+  const soundOn = useSoundOn();
   const promptDone = usePromptDone();
   useEffect(() => resetPrompt(), [day.day]);
   const hasControls = settings && Object.keys(settings.schema).length > 0;
@@ -226,8 +254,8 @@ export function Hud({ day, hint, prompt, notes, settings, tier, choice, onChoice
         </Link>
         {notes ? <p className="cv-notes">{notes}</p> : null}
         <div className="cv-bar-actions">
-        <button type="button" className="cv-pill" aria-pressed={!muted} onClick={() => sound.setMuted(!muted)}>
-          {muted ? "Sound off" : "Sound on"}
+        <button type="button" className="cv-pill" aria-pressed={soundOn} onClick={() => sound.toggle()}>
+          {soundOn ? "Sound on" : "Sound off"}
         </button>
         <button
           type="button"
@@ -254,6 +282,12 @@ export function Hud({ day, hint, prompt, notes, settings, tier, choice, onChoice
           </span>
         </p>
       </div>
+
+      {settings && phonePills ? (
+        <div className={`cv-phone-pills ${panelOpen ? "cv-phone-pills-hidden" : ""}`} key={`pills-${day.day}`}>
+          {phonePills.map((name) => (settings.schema[name] ? <PhonePill key={name} name={name} setting={settings.schema[name]} store={settings} /> : null))}
+        </div>
+      ) : null}
 
       <aside id="cv-panel" className={`cv-panel ${panelOpen ? "cv-panel-open" : ""}`}>
         <button

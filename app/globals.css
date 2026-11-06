@@ -225,6 +225,62 @@ body {
   white-space: nowrap;
 }
 
+.cv-pill-on {
+  background: var(--cv-ink);
+  border-color: var(--cv-ink);
+  color: #101115;
+}
+
+.cv-phone-pills {
+  display: none;
+}
+
+@media (max-width: 900px), (hover: none) {
+  .cv-phone-pills {
+    position: absolute;
+    top: calc(max(16px, env(safe-area-inset-top)) + 44px);
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 60px);
+    display: flex;
+    flex-direction: column;
+    /* Wrapped in reverse, so that a second column grows leftward: this is what lines the pills up on the right. */
+    flex-wrap: wrap-reverse;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 6px;
+    pointer-events: none;
+  }
+
+  .cv-phone-pills .cv-pill {
+    pointer-events: auto;
+    white-space: nowrap;
+  }
+
+  .cv-phone-pills-hidden {
+    display: none;
+  }
+}
+
+.cv-crash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: #08090c;
+  color: var(--cv-ink);
+}
+
+.cv-crash small {
+  max-width: 34em;
+  color: var(--cv-dim);
+  overflow-wrap: anywhere;
+}
+
 .cv-bar-actions {
   display: flex;
   gap: 8px;

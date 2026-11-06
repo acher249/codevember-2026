@@ -1203,7 +1203,7 @@ function GravityIntro() {
 function Scene() {
   const { tier } = useQuality();
   const hourKey = useSetting<string>("hour");
-  const hour = HOURS[hourKey] ?? HOURS.dawn;
+  const hour = HOURS[hourKey] ?? HOURS.dusk;
   useEffect(() => void airTint.value.set(hour.air), [hour]);
   useLook(hour.look);
   // Chosen once: dropping a quality tier later on should not fetch every texture again.
@@ -1249,13 +1249,14 @@ const moss: DayDefinition = {
   autoStart: "medium",
   passes: { bounce: false, haze: false, overlay: true, depthOfField: { range: 20, air: 0.24 } },
   camera: { position: [-10.6, 2.3, 1.1], target: [2.5, -0.5, 5.2], fov: 44 },
+  phonePills: ["hour"],
   extents: { centre: [6, 2, 14], radius: 48, color: "#eaf3cf" },
   look: { background: "#10160c", gi: 3.4, ao: 1, aoRadius: 0.5, aoReach: 22, vignette: 0.5, grain: 0.012 },
   settings: {
     hour: {
       type: "choice",
       label: "Hour",
-      value: "dawn",
+      value: "dusk",
       options: [
         { value: "dawn", label: "Dawn", swatch: ["#5b86b8", "#f2d3b0"] },
         { value: "noon", label: "Noon", swatch: ["#3f7fcf", "#dbe9ef"] },

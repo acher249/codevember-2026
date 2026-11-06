@@ -10,6 +10,7 @@ import { LOAD_ORDER, type LoadStep } from "../ui/Loader";
 import { CameraRig, GrabProvider, useGrabRegistry } from "./controls";
 import { Post } from "./Post";
 import { Extents } from "./extents";
+import { withRetries } from "./retry";
 import { AdaptiveQuality, DPR_STEPS, initialTier, QualityProvider, scenePhase, type QualityChoice } from "./quality";
 import { SettingsProvider, useCreateSettings } from "./settings";
 import { DEFAULT_LOOK, type DayDefinition, type Look, type QualityTier, type RenderPhase } from "./types";
@@ -162,7 +163,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
       return;
     }
     const fade = new Promise((resolve) => window.setTimeout(resolve, loaded ? 320 : 0));
-    Promise.all([load(), fade])
+    Promise.all([withRetries(load), fade])
       .then(([module]) => {
         if (cancelled) return;
         phase.current = "hold";
@@ -198,8 +199,15 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
         dpr={Math.min(DPR_STEPS[0], globalThis.devicePixelRatio || 1)}
         camera={{ fov: 36, near: 0.05, far: 120 }}
         gl={async (props) => {
-          const renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: false, alpha: false });
-          await renderer.init();
+          let renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: false, alpha: false });
+          try {
+            await renderer.init();
+          } catch (failure) {
+            // Phones can refuse WebGPU when short of memory. The WebGL backend often still gets through.
+            console.error(failure);
+            renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: false, alpha: false, forceWebGL: true });
+            await renderer.init();
+          }
           (renderer as unknown as { onDeviceLost: (info: { message: string }) => void }).onDeviceLost = (info) => {
             setError(`The GPU connection was lost (${info.message}). Reload to continue.`);
           };
@@ -254,6 +262,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
         prompt={loaded?.day.day === day.day ? definition?.prompt : undefined}
         notes={loaded?.day.day === day.day ? definition?.notes : undefined}
         settings={loaded?.day.day === day.day ? settings : null}
+        phonePills={loaded?.day.day === day.day ? definition?.phonePills : undefined}
         tier={tier}
         choice={choice}
         onChoice={setChoice}

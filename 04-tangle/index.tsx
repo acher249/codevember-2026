@@ -511,6 +511,7 @@ function Scene() {
 
 const tangle: DayDefinition = {
   camera: { position: [0, 1.95, 4.9], target: [0, 1.08, 0], fov: 36 },
+  phonePills: ["colourway", "retangle"],
   extents: { centre: [0, 1.5, 0], radius: 11, floor: 0, color: "#ffc8a6" },
   look: {
     background: BACKGROUND,

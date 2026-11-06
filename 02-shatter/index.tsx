@@ -397,6 +397,7 @@ function Sky({ palette, broken }: { palette: SkyPalette; broken: { current: numb
 
   useSettingAction("mend", mend);
   useSettingAction("shatterAll", () => {
+    dismissPrompt();
     for (const aim of [new THREE.Vector3(0, 1, 0)]) crackAround(aim.multiplyScalar(DOME_RADIUS), Math.PI);
   });
 
@@ -735,6 +736,7 @@ function Scene() {
 
 const shatter: DayDefinition = {
   camera: { position: [0, 2.6, 15], target: [0, 8.4, -6], fov: 58 },
+  phonePills: ["shatterAll", "mend"],
   extents: { centre: [0, 0, 0], radius: 19.8, floor: 0, color: "#bfe2ff" },
   look: { background: SHATTER_BACKGROUND, exposure: 1, gi: 1.6, ao: 0.8, aoRadius: 0.6, vignette: 0.32, grain: 0.02, bloomThreshold: 1 },
   settings: {

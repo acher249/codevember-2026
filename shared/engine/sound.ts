@@ -47,6 +47,8 @@ class SoundEngine {
   private voices = 0;
   private listeners = new Set<() => void>();
   muted = false;
+  playing = false;
+  private startedAt = -Infinity;
 
   constructor() {
     if (typeof window === "undefined") return;
@@ -55,9 +57,9 @@ class SoundEngine {
     } catch {
       this.muted = false;
     }
+    // Phones only allow audio to start as a tap ends, and desktops as a press begins, so this listens for both.
     const wake = () => this.wake();
-    window.addEventListener("pointerdown", wake, { capture: true });
-    window.addEventListener("keydown", wake, { capture: true });
+    for (const event of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) window.addEventListener(event, wake, { capture: true });
     document.addEventListener("visibilitychange", () => {
       if (!this.context) return;
       if (document.hidden) void this.context.suspend();
@@ -67,12 +69,16 @@ class SoundEngine {
 
   private wake() {
     if (this.context) {
-      if (this.context.state === "suspended" && !document.hidden) void this.context.resume();
+      // Not only "suspended": iOS also has "interrupted", after a call or a trip to the home screen.
+      if (this.context.state !== "running" && !document.hidden) void this.context.resume();
       return;
     }
     const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Context) return;
     this.context = new Context();
+    this.context.onstatechange = () => this.changedState();
+    void this.context.resume();
+    this.changedState();
     this.master = this.context.createGain();
     this.master.gain.value = this.muted ? 0 : 0.8;
     // A gentle limiter, so that a pile of impacts at once never clips.
@@ -90,6 +96,20 @@ class SoundEngine {
       this.listeners.delete(listener);
     };
   };
+
+  private changedState() {
+    const playing = this.context?.state === "running";
+    if (playing && !this.playing) this.startedAt = performance.now();
+    this.playing = playing;
+    for (const listener of this.listeners) listener();
+  }
+
+  // What the sound button means. Until the browser has let audio start, there is nothing to turn off, so a press there
+  // only ever turns it on. That includes a press that has only just started it, in the moments before the click arrives.
+  toggle() {
+    const justStarted = performance.now() - this.startedAt < 350;
+    this.setMuted(this.playing && !this.muted && !justStarted);
+  }
 
   setMuted(muted: boolean) {
     this.muted = muted;
@@ -490,10 +510,11 @@ class SoundEngine {
 
 export const sound = new SoundEngine();
 
-export function useSoundMuted() {
+// Whether sound can actually be heard right now. Browsers hold it back until the first press.
+export function useSoundOn() {
   return useSyncExternalStore(
     sound.subscribe,
-    () => sound.muted,
+    () => sound.playing && !sound.muted,
     () => false
   );
 }

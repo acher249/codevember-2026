@@ -61,6 +61,8 @@ export type DayDefinition = {
   camera: { position: [number, number, number]; target: [number, number, number]; fov?: number };
   look?: Partial<Look>;
   extents?: Extents;
+  // The settings that get their own pills on a phone, down the right of the screen. The panel holds the rest.
+  phonePills?: string[];
   // Auto will not go below this. For a day whose whole point is lost on a lower tier.
   autoFloor?: QualityTier;
   // Auto starts no higher than this, on a day so heavy that stepping down later would stall it with a rebuild.
