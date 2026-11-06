@@ -197,7 +197,8 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
         className="cv-canvas"
         shadows="soft"
         dpr={Math.min(DPR_STEPS[0], globalThis.devicePixelRatio || 1)}
-        camera={{ fov: 36, near: 0.05, far: 120 }}
+        // Well past any sky dome plus the furthest the camera can get from it, or zooming out cuts a black hole in the sky.
+        camera={{ fov: 36, near: 0.05, far: 400 }}
         gl={async (props) => {
           let renderer = new THREE.WebGPURenderer({ ...(props as object), antialias: false, alpha: false });
           try {
@@ -220,7 +221,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
           <SettingsProvider value={settings}>
             <GrabProvider value={registry}>
               <LookContext.Provider value={applyLook}>
-                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} phase={phase} />
+                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} chromatic={definition?.passes?.chromatic} phase={phase} />
                 <AdaptiveQuality
                   choice={choice}
                   floor={definition?.autoFloor}
@@ -261,6 +262,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
         hint={loaded?.day.day === day.day ? definition?.hint : undefined}
         prompt={loaded?.day.day === day.day ? definition?.prompt : undefined}
         notes={loaded?.day.day === day.day ? definition?.notes : undefined}
+        Overlay={loaded?.day.day === day.day ? definition?.Overlay : undefined}
         settings={loaded?.day.day === day.day ? settings : null}
         phonePills={loaded?.day.day === day.day ? definition?.phonePills : undefined}
         tier={tier}

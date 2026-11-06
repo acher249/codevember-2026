@@ -21,7 +21,7 @@ import { useGrabbable } from "../shared/engine/controls";
 import { useGrabRigidBody } from "../shared/engine/physics";
 import { useQuality } from "../shared/engine/quality";
 import { useSetting, useSettingAction, useSettingRef } from "../shared/engine/settings";
-import { sound, useBed } from "../shared/engine/sound";
+import { sound, useBed, useMusic } from "../shared/engine/sound";
 import { Haze, KeyLight, StudioEnvironment, StudioFloor } from "../shared/engine/studio";
 import type { DayDefinition } from "../shared/engine/types";
 import { useLook } from "../shared/engine/Stage";
@@ -484,7 +484,8 @@ function Cords() {
 function Scene() {
   const haze = useSetting<number>("haze");
   useLook({ haze });
-  useBed("hum", 0.18);
+  useMusic("/codevember/music/uplifting-moment.mp3", 0.43);
+  useBed("hum", 0.09);
 
   return (
     <>

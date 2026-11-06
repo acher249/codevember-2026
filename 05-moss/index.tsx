@@ -37,7 +37,7 @@ import {
   vec3
 } from "three/tsl";
 import { Birds, createSky, SkyDome, type SkyPalette } from "../shared/engine/outdoors";
-import { sound, useBed, useEvery } from "../shared/engine/sound";
+import { sound, useBed, useEvery, useMusic } from "../shared/engine/sound";
 import { orbitPoint } from "../shared/engine/controls";
 import { useGrabRigidBody } from "../shared/engine/physics";
 import { airTint, focusBlur } from "../shared/engine/Post";
@@ -1072,6 +1072,7 @@ function Clearing({ hour, tile, assets }: { hour: Hour; tile: THREE.DataTexture;
   });
 
   // The sounds of the place: rain, wind over the edge, birds below, crickets when it gets dark.
+  useMusic("/codevember/music/cinematic-uplifting.mp3", 0.41);
   const rainBed = useBed("rain", rain.current * 0.5);
   useBed("wind", 0.2);
   useBed("crickets", hour.flies * 0.3);

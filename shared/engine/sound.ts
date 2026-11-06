@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
-// Every sound in Codevember is synthesised here, so there are no audio files to load.
-// Browsers keep audio silent until the first press or key, so nothing starts before that: beds and
+// Every sound effect in Codevember is synthesised here. The only audio files are each day's background music, which
+// streams, and does not start downloading until sound does. The tracks are paid for and are not in the open-source repo,
+// so a day whose track is missing simply has no music. Browsers keep audio silent until the first press or key, so nothing starts before that: beds and
 // one-shots asked for earlier wait quietly and join in once the context is running.
 
 type BedKind = "wind" | "rain" | "river" | "hum" | "shimmer" | "crickets";
@@ -49,6 +50,11 @@ class SoundEngine {
   muted = false;
   playing = false;
   private startedAt = -Infinity;
+  // One element for every day: phones only let an element play once a press has started it, and after that it can change track.
+  private musicElement: HTMLAudioElement | null = null;
+  private musicGain: GainNode | null = null;
+  private wantedMusic: { url: string; level: number } | null = null;
+  private missingMusic = new Set<string>();
 
   constructor() {
     if (typeof window === "undefined") return;
@@ -62,8 +68,13 @@ class SoundEngine {
     for (const event of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) window.addEventListener(event, wake, { capture: true });
     document.addEventListener("visibilitychange", () => {
       if (!this.context) return;
-      if (document.hidden) void this.context.suspend();
-      else void this.context.resume();
+      if (document.hidden) {
+        void this.context.suspend();
+        this.musicElement?.pause();
+      } else {
+        void this.context.resume();
+        this.startMusic();
+      }
     });
   }
 
@@ -71,6 +82,8 @@ class SoundEngine {
     if (this.context) {
       // Not only "suspended": iOS also has "interrupted", after a call or a trip to the home screen.
       if (this.context.state !== "running" && !document.hidden) void this.context.resume();
+      // Any press is another chance, if the browser refused to start the music earlier.
+      this.startMusic();
       return;
     }
     const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -88,6 +101,51 @@ class SoundEngine {
     this.master.connect(limiter);
     limiter.connect(this.context.destination);
     for (const bed of this.beds) bed.start();
+    this.startMusic();
+  }
+
+  private startMusic() {
+    const wanted = this.wantedMusic;
+    if (!wanted || !this.context || !this.master || this.muted || document.hidden) return;
+    const url = new URL(wanted.url, window.location.href).href;
+    if (this.missingMusic.has(url)) return;
+    if (!this.musicElement) {
+      this.musicElement = new Audio();
+      const created = this.musicElement;
+      created.addEventListener("error", () => {
+        if (created.src) this.missingMusic.add(created.src);
+      });
+      this.musicElement.loop = true;
+      this.musicElement.preload = "auto";
+      this.musicElement.setAttribute("playsinline", "");
+      this.musicGain = this.context.createGain();
+      this.musicGain.gain.value = 0;
+      this.context.createMediaElementSource(this.musicElement).connect(this.musicGain);
+      this.musicGain.connect(this.master);
+    }
+    const element = this.musicElement;
+    if (element.src !== url) element.src = url;
+    // Also when it is already playing: it may be on its way out, if the same track has just been asked for again.
+    (this.musicGain as GainNode).gain.setTargetAtTime(wanted.level, this.context.currentTime, 0.8);
+    if (!element.paused) return;
+    element.play().catch(() => {
+      // Refused or interrupted. The next press tries again.
+    });
+  }
+
+  // Asks for a day's track, and returns what stops it again.
+  music(url: string, level: number) {
+    const wanted = { url, level };
+    this.wantedMusic = wanted;
+    this.startMusic();
+    return () => {
+      if (this.wantedMusic !== wanted) return;
+      this.wantedMusic = null;
+      if (this.context && this.musicGain) this.musicGain.gain.setTargetAtTime(0, this.context.currentTime, 0.15);
+      window.setTimeout(() => {
+        if (!this.wantedMusic) this.musicElement?.pause();
+      }, 700);
+    };
   }
 
   subscribe = (listener: () => void) => {
@@ -119,6 +177,8 @@ class SoundEngine {
       // Not remembered between visits, which is fine.
     }
     if (this.context && this.master) this.master.gain.setTargetAtTime(muted ? 0 : 0.8, this.context.currentTime, 0.05);
+    if (muted) this.musicElement?.pause();
+    else this.startMusic();
     for (const listener of this.listeners) listener();
   }
 
@@ -533,6 +593,11 @@ export function useBed(kind: BedKind, level: number) {
     bed.current?.level(level);
   }, [level]);
   return bed;
+}
+
+// A day's background music, for as long as the component lasts.
+export function useMusic(url: string, level: number) {
+  useEffect(() => sound.music(url, level), [url, level]);
 }
 
 // Something that happens now and then, at random, such as a bird calling. The callback may change between renders.

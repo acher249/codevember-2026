@@ -31,13 +31,14 @@ import {
   velocity
 } from "three/tsl";
 import { ao } from "three/addons/tsl/display/GTAONode.js";
+import { chromaticAberration } from "three/addons/tsl/display/ChromaticAberrationNode.js";
 import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { fxaa } from "three/addons/tsl/display/FXAANode.js";
 import { gaussianBlur } from "three/addons/tsl/display/GaussianBlurNode.js";
 import { ssgi } from "three/addons/tsl/display/SSGINode.js";
 import { traa } from "three/addons/tsl/display/TRAANode.js";
-import type { Look, QualityTier, RenderPhase } from "./types";
+import type { Look, QualityTier, RenderPhase, DepthOfField } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model swizzles or MRT lookups. */
 
@@ -48,6 +49,7 @@ export const HAZE_LAYER = 10;
 export const focusDistance = uniform(12);
 export const focusBlur = uniform(1);
 export const airTint = uniform(new THREE.Color("#d8c8b4"));
+export const airAmount = uniform(1);
 
 // Fine, fast things such as rain draw into their own pass, added after the temporal blend. Inside the scene pass
 // they would write their motion into the buffer that the blend trusts, and everything behind them would shimmer.
@@ -97,7 +99,9 @@ type PostProps = {
   // Screen-space bounce light. Without it the high tier falls back to plain ambient occlusion.
   bounce?: boolean;
   overlay?: boolean;
-  depthOfField?: { range: number; air?: number };
+  depthOfField?: DepthOfField;
+  // How far the colours split at the edge of the frame. Nothing on the low tier.
+  chromatic?: number;
   phase: RefObject<RenderPhase>;
 };
 
@@ -105,7 +109,7 @@ type PostProps = {
 //   high    SSGI (bounce + AO), haze, bloom, TRAA
 //   medium  GTAO, haze, bloom, TRAA
 //   low     bloom and FXAA, for phones and slow machines
-export function Post({ look, quality, hasHaze, bounce = true, overlay = false, depthOfField, phase }: PostProps) {
+export function Post({ look, quality, hasHaze, bounce = true, overlay = false, depthOfField, chromatic, phase }: PostProps) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
@@ -201,14 +205,21 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
     }
 
     // Air between the lens and whatever it sees, thickening with distance up to a limit.
+    const isSky = depthOfField?.sharpSky ? (scenePass.getTextureNode("depth") as any).r.greaterThanEqual(0.99999) : null;
     if (depthOfField?.air) {
       const seen = (scenePass.getViewZNode() as any).negate();
-      const thick = float(1).sub(exp(seen.mul(-0.022))).mul(depthOfField.air);
-      color = vec4(mix((color as any).rgb, airTint, thick), 1) as any;
+      const through = depthOfField.airBehindFocus === undefined ? seen : seen.sub((focusDistance as any).sub(depthOfField.airBehindFocus)).max(0);
+      const thick = float(1).sub(exp(through.mul(-(depthOfField.airRate ?? 0.022)))).mul(depthOfField.air).mul(airAmount) as any;
+      color = vec4(mix((color as any).rgb, airTint, isSky ? isSky.select(float(0), thick) : thick), 1) as any;
     }
 
     if (depthOfField && tier !== "low") {
-      color = dof(color, scenePass.getViewZNode(), focusDistance, uniform(depthOfField.range), focusBlur);
+      const viewZ = scenePass.getViewZNode() as any;
+      color = dof(color, isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ, focusDistance, uniform(depthOfField.range), focusBlur);
+    }
+
+    if (chromatic && tier !== "low") {
+      color = chromaticAberration(color as any, uniform(chromatic), vec2(0.5, 0.5) as any, float(1) as any) as any;
     }
 
     if (overlay) {
@@ -241,7 +252,7 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
     return { stack, tuners, hazeDepth, sceneDepth };
     // Only the things that change the graph's shape are dependencies. Look values go through tuners.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, uniforms]);
+  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, chromatic, uniforms]);
 
   useEffect(() => {
     gl.toneMappingExposure = look.exposure;

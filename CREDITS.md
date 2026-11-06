@@ -12,6 +12,7 @@ Codevember stands on a lot of other people's work. Thank you to all of them.
 | [Rapier](https://rapier.rs) | Apache-2.0 |
 | [Next.js](https://nextjs.org) | MIT |
 | [React](https://react.dev) | MIT |
+| [Framer Motion](https://motion.dev) | MIT |
 
 `npm run build` writes the full license text of everything in the built site to `public/THIRD_PARTY_NOTICES.txt`.
 
@@ -50,3 +51,7 @@ Where these appear, the code says so too.
 - **mulberry32** random numbers: Tommy Ettinger
 - **Lehmer random numbers**, with constants from Park and Miller (1988)
 - **The `fract(sin(...) * 43758.5453)` hash**, a long-standing shader one-liner whose author isn't known for certain
+
+## Star data
+
+The constellation figures in Orrery come from [d3-celestial](https://github.com/ofrohn/d3-celestial) by Olaf Frohn, under the BSD 3-Clause license, included in full at [06-orrery/d3-celestial-LICENSE.txt](06-orrery/d3-celestial-LICENSE.txt).

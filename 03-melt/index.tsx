@@ -39,7 +39,7 @@ import {
 import { useGrabbable } from "../shared/engine/controls";
 import { useQuality } from "../shared/engine/quality";
 import { useSetting, useSettingAction, useSettingRef } from "../shared/engine/settings";
-import { sound, useBed, useEvery } from "../shared/engine/sound";
+import { sound, useBed, useEvery, useMusic } from "../shared/engine/sound";
 import { useLook } from "../shared/engine/Stage";
 import type { DayDefinition, Look } from "../shared/engine/types";
 import { BAR_HALF, BAR_RADIUS, BOUND_CENTRE_Y, BOUND_RADIUS, MAX_BLOBS, MAX_RIPPLES, MeltSim, ORB_RADIUS, RING_RADIUS, RING_TUBE, SOURCE_Y, type SourceKind } from "./sim";
@@ -343,6 +343,7 @@ function Metal() {
   });
 
   // The room hums harder with the heat, and past a point the metal starts to spit.
+  useMusic("/codevember/music/midnight-reflections.mp3", 0.34);
   const hum = useBed("hum", 0.16);
   useEvery(0.2, 0.6, () => {
     hum.current?.level(0.12 + heat.current * 0.04);

@@ -33,6 +33,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 03 | [Melt](03-melt) | Ray-marched liquid metal dripping into a mirror. Grab the metal and carry it around. |
 | 04 | [Tangle](04-tangle) | A snarl of lacquered cord hanging in a shaft of light. Pull a loose end. |
 | 05 | [Moss](05-moss) | A ledge on a cliff over a forest, deep in moss made of separate fibres. |
+| 06 | [Orrery](06-orrery) | A clockwork solar system in brass, with every tooth of every gear doing its job. Turn the crank, pull it apart, drag the Sun and let the pieces chase it, or turn the whole machine into a constellation. |
 
 ## Controls
 

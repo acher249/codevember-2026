@@ -50,7 +50,7 @@ import { dismissPrompt } from "../shared/engine/prompt";
 import { Birds, createSky, type SkyPalette } from "../shared/engine/outdoors";
 import { useQuality } from "../shared/engine/quality";
 import { useSetting, useSettingAction, useSettingRef } from "../shared/engine/settings";
-import { sound, useBed, useEvery } from "../shared/engine/sound";
+import { sound, useBed, useEvery, useMusic } from "../shared/engine/sound";
 import { Haze, KeyLight, StudioEnvironment } from "../shared/engine/studio";
 import { useLook } from "../shared/engine/Stage";
 import type { DayDefinition } from "../shared/engine/types";
@@ -702,8 +702,9 @@ function Scene() {
   useLook({ haze: 0.5 - night * 0.2, bloom: 0.14 + night * 0.26 });
 
   // As the sky comes down, the wind drops away and the night behind it starts to ring.
+  useMusic("/codevember/music/festival-of-lights-dhol.mp3", 0.26);
   useBed("wind", 0.26 - night * 0.12);
-  useBed("shimmer", 0.08 + night * 0.22);
+  useBed("shimmer", 0.04 + night * 0.11);
   useEvery(0.5, 2.2, () => sound.play("chirp", { gain: 0.25 + Math.random() * 0.45, pitch: 0.8 + Math.random() * 0.45, pan: Math.random() * 1.8 - 0.9 }));
   useEvery(5, 15, () => sound.play("caw", { gain: 0.3 + Math.random() * 0.4, pitch: 0.85 + Math.random() * 0.3, pan: Math.random() * 1.6 - 0.8 }));
 

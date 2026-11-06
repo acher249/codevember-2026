@@ -1,16 +1,29 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type RefObject } from "react";
 import { dayHref, days, promptDayFor, type CodevemberDay } from "../days";
 import type { QualityChoice } from "../engine/quality";
 import type { SettingsStore } from "../engine/settings";
 import type { QualityTier, Setting } from "../engine/types";
 import { resetPrompt, usePromptDone } from "../engine/prompt";
 import { sound, useSoundOn } from "../engine/sound";
+import { SETTLE, TextMotion, fade, inTurn, rise, riseBig } from "./motion";
 
 const pad = (day: number) => String(day).padStart(2, "0");
+
+// A word on a button that changes: the new one comes up as the old one goes.
+function Swap({ text }: { text: string }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.span key={text} style={{ display: "inline-block" }} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.14 }}>
+        {text}
+      </motion.span>
+    </AnimatePresence>
+  );
+}
 
 function DayRuler({ current }: { current: CodevemberDay }) {
   const [promptDay, setPromptDay] = useState<number | undefined>();
@@ -119,7 +132,7 @@ function Control({ name, setting, store }: { name: string; setting: Setting; sto
               role="radio"
               aria-checked={value === option.value}
               className={`cv-choice ${value === option.value ? "cv-choice-on" : ""}`}
-              onClick={() => store.set(name, option.value)}
+              onClick={() => store.set(name, value === option.value && setting.pressAgain ? setting.pressAgain : option.value)}
             >
               {option.swatch ? (
                 <span className="cv-swatch" aria-hidden="true">
@@ -197,6 +210,7 @@ type HudProps = {
   hint?: string;
   prompt?: { title: string; detail?: string };
   notes?: string;
+  Overlay?: ComponentType;
   settings: SettingsStore | null;
   phonePills?: string[];
   tier: QualityTier;
@@ -206,7 +220,7 @@ type HudProps = {
   fpsRef: RefObject<HTMLElement | null>;
 };
 
-export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
+export function Hud({ day, hint, prompt, notes, Overlay, settings, phonePills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
   const router = useRouter();
   const [panelOpen, setPanelOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -247,15 +261,20 @@ export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choi
   const hasControls = settings && Object.keys(settings.schema).length > 0;
 
   return (
+    <TextMotion>
     <div className={`cv-hud ${hidden ? "cv-hud-hidden" : ""}`}>
       <header className="cv-bar">
         <Link className="cv-pill cv-calendar-pill" href="/" prefetch={false}>
           Codevember calendar
         </Link>
-        {notes ? <p className="cv-notes">{notes}</p> : null}
+        {notes ? (
+          <motion.p key={`notes-${day.day}`} className="cv-notes" variants={rise} initial="hidden" animate="show" transition={{ delay: 0.5 }}>
+            {notes}
+          </motion.p>
+        ) : null}
         <div className="cv-bar-actions">
         <button type="button" className="cv-pill" aria-pressed={soundOn} onClick={() => sound.toggle()}>
-          {soundOn ? "Sound on" : "Sound off"}
+          <Swap text={soundOn ? "Sound on" : "Sound off"} />
         </button>
         <button
           type="button"
@@ -264,23 +283,36 @@ export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choi
           aria-controls="cv-panel"
           onClick={() => setPanelOpen((open) => !open)}
         >
-          {panelOpen ? "Close" : "Tune"}
+          <Swap text={panelOpen ? "Close" : "Tune"} />
         </button>
         </div>
       </header>
 
+      {Overlay ? <Overlay key={`overlay-${day.day}`} /> : null}
+
       <div className="cv-title" key={day.day}>
-        <p className="cv-title-day">Day {pad(day.day)}</p>
-        <div className="cv-title-row">
-          <h1>{day.word}</h1>
-          {isTouch ? null : <FlyKeys />}
-        </div>
-        <p className={`cv-hint ${touched ? "cv-hint-gone" : ""}`}>
-          {hint ? <strong>{hint} </strong> : null}
-          <span className="cv-hint-controls">
-            {isTouch ? "Drag to look, pinch to zoom." : "Drag to orbit, WASD to fly, scroll to zoom."}
-          </span>
-        </p>
+        <motion.div variants={inTurn(0.09, 0.12)} initial="hidden" animate="show">
+          <motion.p className="cv-title-day" variants={rise}>
+            Day {pad(day.day)}
+          </motion.p>
+          <div className="cv-title-row">
+            <motion.h1 variants={riseBig}>{day.word}</motion.h1>
+            {isTouch ? null : (
+              <motion.div variants={fade}>
+                <FlyKeys />
+              </motion.div>
+            )}
+          </div>
+          <motion.div variants={rise}>
+            {/* The title stands on this, so as it closes the title comes down to the bottom corner. */}
+            <motion.div className="cv-hint-room" initial={false} animate={{ height: touched ? 0 : "auto", opacity: touched ? 0 : 1 }} transition={SETTLE}>
+              <p className="cv-hint">
+                {hint ? <strong>{hint} </strong> : null}
+                <span className="cv-hint-controls">{isTouch ? "Drag to look, pinch to zoom." : "Drag to orbit, WASD to fly, scroll to zoom."}</span>
+              </p>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
 
       {settings && phonePills ? (
@@ -304,18 +336,22 @@ export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choi
         </button>
         <div id="cv-panel-body" className="cv-panel-body" inert={!panelOpen}>
           <div className="cv-panel-inner">
-            <div className="cv-panel-scroll">
+            <motion.div className="cv-panel-scroll" key={`controls-${day.day}`} variants={inTurn(0.035, 0.1)} initial="hidden" animate={panelOpen ? "show" : "hidden"}>
               {hasControls
                 ? Object.entries(settings.schema).map(([name, setting]) => (
-                    <Control key={`${day.day}-${name}`} name={name} setting={setting} store={settings} />
+                    <motion.div key={name} className="cv-panel-row" variants={rise}>
+                      <Control name={name} setting={setting} store={settings} />
+                    </motion.div>
                   ))
                 : null}
               {hasControls ? (
-                <button type="button" className="cv-reset" onClick={() => settings.reset()}>
-                  Reset
-                </button>
+                <motion.div className="cv-panel-row" variants={rise}>
+                  <button type="button" className="cv-reset" onClick={() => settings.reset()}>
+                    Reset
+                  </button>
+                </motion.div>
               ) : null}
-            </div>
+            </motion.div>
             <footer className="cv-panel-foot">
               <div className="cv-choices cv-quality" role="radiogroup" aria-label="Render quality">
                 {CHOICES.map((option) => (
@@ -339,15 +375,17 @@ export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choi
         </div>
       </aside>
 
-      {prompt ? (
-        <div className={`cv-prompt ${promptDone ? "cv-prompt-gone" : ""}`} aria-hidden={promptDone}>
-          <i aria-hidden="true" />
-          <p>{prompt.title}</p>
-          {prompt.detail ? <small>{prompt.detail}</small> : null}
-        </div>
-      ) : null}
+      <AnimatePresence>
+        {prompt && !promptDone ? (
+          <motion.div className="cv-prompt" key={`prompt-${day.day}`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, scale: 0.97 }} transition={SETTLE}>
+            <i aria-hidden="true" />
+            <p>{prompt.title}</p>
+            {prompt.detail ? <small>{prompt.detail}</small> : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      <p className="cv-credit">
+      <motion.p className="cv-credit" variants={fade} initial="hidden" animate="show">
         Built with{" "}
         <a href="https://r3f.docs.pmnd.rs/" target="_blank" rel="noreferrer">
           React Three Fiber
@@ -356,7 +394,7 @@ export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choi
         <a href="https://r3f.docs.pmnd.rs/tutorials/v9-migration-guide#webgpu" target="_blank" rel="noreferrer">
           WebGPU
         </a>
-      </p>
+      </motion.p>
 
       <footer className="cv-foot">
         {previous ? (
@@ -380,5 +418,6 @@ export function Hud({ day, hint, prompt, notes, settings, phonePills, tier, choi
         )}
       </footer>
     </div>
+    </TextMotion>
   );
 }

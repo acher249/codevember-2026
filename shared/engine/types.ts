@@ -20,6 +20,8 @@ export type ChoiceSetting = {
   label: string;
   options: { value: string; label: string; swatch?: string[] }[];
   value: string;
+  // What pressing the option already chosen goes back to. Without this, it does nothing.
+  pressAgain?: string;
 };
 
 export type ActionSetting = {
@@ -57,6 +59,11 @@ export type Look = {
 // How far a day's camera may go: a sphere, and optionally a level it stays above.
 export type Extents = { centre: [number, number, number]; radius: number; floor?: number; color?: string };
 
+// air is how thick the air gets, up to a limit. By default it thickens from the lens at a fixed rate. airRate changes that rate,
+// and airBehindFocus starts it that far in front of the focus, so that depth reads the same at any zoom. sharpSky leaves
+// whatever wrote no depth, such as a star dome, out of both the air and the blur.
+export type DepthOfField = { range: number; air?: number; airRate?: number; airBehindFocus?: number; sharpSky?: boolean };
+
 export type DayDefinition = {
   camera: { position: [number, number, number]; target: [number, number, number]; fov?: number };
   look?: Partial<Look>;
@@ -68,13 +75,15 @@ export type DayDefinition = {
   // Auto starts no higher than this, on a day so heavy that stepping down later would stall it with a rebuild.
   autoStart?: QualityTier;
   // Passes a scene has no use for, so it need not pay for them. Both default to on.
-  passes?: { bounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: { range: number; air?: number } };
+  passes?: { bounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: DepthOfField; chromatic?: number };
   settings?: SettingsSchema;
   hint?: string;
   // How the scene is made, in a couple of sentences. Shown under the wordmark on desktop.
   notes?: string;
   // Shown in the middle of the screen until the day calls dismissPrompt.
   prompt?: { title: string; detail?: string };
+  // Anything of the day's own to show over the scene, as ordinary page content.
+  Overlay?: ComponentType;
   Scene: ComponentType;
 };
 

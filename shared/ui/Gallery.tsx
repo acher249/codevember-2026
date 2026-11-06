@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { dayHref, days, daySlug, promptDayFor } from "../days";
+import { SETTLE, TextMotion, inTurn, rise, riseBig } from "./motion";
 
 const pad = (day: number) => String(day).padStart(2, "0");
 
@@ -11,16 +13,17 @@ export function Gallery() {
   useEffect(() => setPromptDay(promptDayFor(new Date())), []);
 
   return (
+    <TextMotion>
     <main className="cv-gallery">
-      <header className="cv-gallery-head">
-        <h1>Codevember</h1>
-        <p>
+      <motion.header className="cv-gallery-head" variants={inTurn(0.1, 0.05)} initial="hidden" animate="show">
+        <motion.h1 variants={riseBig}>Codevember</motion.h1>
+        <motion.p variants={rise}>
           One word, one real-time 3D experience, every day of November 2026. WebGPU, shaders, light you can
           grab.
-        </p>
-      </header>
+        </motion.p>
+      </motion.header>
 
-      <ol className="cv-grid">
+      <motion.ol className="cv-grid" variants={inTurn(0.028, 0.3)} initial="hidden" animate="show">
         {days.map((day) => {
           const open = day.live;
           const classes = `cv-card ${open ? "cv-card-open" : ""} ${day.day === promptDay ? "cv-card-today" : ""}`;
@@ -39,7 +42,7 @@ export function Gallery() {
             </>
           );
           return (
-            <li key={day.day}>
+            <motion.li key={day.day} variants={rise} whileHover={open ? { y: -4 } : undefined} transition={SETTLE}>
               {open ? (
                 <Link className={classes} href={dayHref(day)} prefetch={false}>
                   {body}
@@ -47,10 +50,11 @@ export function Gallery() {
               ) : (
                 <div className={classes}>{body}</div>
               )}
-            </li>
+            </motion.li>
           );
         })}
-      </ol>
+      </motion.ol>
     </main>
+    </TextMotion>
   );
 }

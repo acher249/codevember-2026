@@ -41,7 +41,7 @@ import { useGrabbable } from "../shared/engine/controls";
 import { Birds, createSky, SkyDome, type SkyPalette } from "../shared/engine/outdoors";
 import { useQuality } from "../shared/engine/quality";
 import { useSetting, useSettingAction, useSettingRef, useSettingsStore } from "../shared/engine/settings";
-import { sound, useBed, useEvery } from "../shared/engine/sound";
+import { sound, useBed, useEvery, useMusic } from "../shared/engine/sound";
 import { Haze, KeyLight, StudioEnvironment, StudioFloor } from "../shared/engine/studio";
 import { useLook } from "../shared/engine/Stage";
 import type { DayDefinition, Look } from "../shared/engine/types";
@@ -786,6 +786,7 @@ function Sheet({ sheepCount, hour }: { sheepCount: number; hour: Hour }) {
 
 function Ambience() {
   const wind = useSetting<number>("wind");
+  useMusic("/codevember/music/the-journey-home.mp3", 0.37);
   useBed("river", 0.15);
   useBed("wind", wind * 0.1);
   useEvery(1.2, 4.5, () => sound.play("chirp", { gain: 0.3 + Math.random() * 0.4, pitch: 0.85 + Math.random() * 0.35, pan: Math.random() * 1.6 - 0.8 }));

@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CodevemberDay } from "../days";
+import { TextMotion, inTurn, rise, riseBig } from "./motion";
 
 export const LOAD_ORDER = ["swap", "engine", "scene", "shaders", "done"] as const;
 export type LoadStep = (typeof LOAD_ORDER)[number];
@@ -29,21 +31,30 @@ export function Loader({ day, step }: { day: CodevemberDay; step: LoadStep }) {
   const { to, seconds, label } = STEPS[step];
 
   return (
+    <TextMotion>
     <div className={`cv-loader ${step === "done" ? "cv-loader-done" : ""}`} aria-hidden={step === "done"}>
       <header className="cv-bar">
         <Link className="cv-mark" href="/" prefetch={false}>
           Codevember
         </Link>
       </header>
-      <p className="cv-title-day">Day {String(day.day).padStart(2, "0")}</p>
-      <p className="cv-loader-word">{day.word}</p>
+      <motion.div variants={inTurn(0.08)} initial="hidden" animate="show">
+        <motion.p className="cv-title-day" variants={rise}>
+          Day {String(day.day).padStart(2, "0")}
+        </motion.p>
+        <motion.p className="cv-loader-word" variants={riseBig}>
+          {day.word}
+        </motion.p>
+      </motion.div>
       <div className="cv-loader-track" role="progressbar" aria-label={label}>
         <span style={{ transform: `scaleX(${armed ? to : 0})`, transitionDuration: `${seconds}s` }} />
       </div>
       <p className="cv-loader-label">
         <i className="cv-spinner" aria-hidden="true" />
-        {label}
+        {/* Not Framer Motion: compiling shaders blocks JavaScript, which would hold a fading word at invisible beside a turning spinner. */}
+        <span key={label}>{label}</span>
       </p>
     </div>
+    </TextMotion>
   );
 }
