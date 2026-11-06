@@ -153,3 +153,18 @@ next-env.d.ts
 
 # Written by scripts/notices.mjs at build time
 public/THIRD_PARTY_NOTICES.txt
+
+# Background music is paid for and licensed to adamwebsite.com only. Never commit it here.
+# Written to match any capitalisation, because git only ignores case on some machines.
+*.[mM][pP]3
+*.[wW][aA][vV]
+*.[oO][gG][gG]
+*.[oO][gG][aA]
+*.[oO][pP][uU][sS]
+*.[mM]4[aA]
+*.[aA][aA][cC]
+*.[fF][lL][aA][cC]
+*.[aA][iI][fF]
+*.[aA][iI][fF][fF]
+*.[wW][mM][aA]
+public/codevember/music/
