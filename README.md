@@ -4,11 +4,45 @@ Creating a fun, interactive three.js experience every day of November. One word,
 
 <table>
   <tr>
-    <td><img src="public/posters/01-fold.jpg" alt="Fold" width="180"></td>
-    <td><img src="public/posters/02-shatter.jpg" alt="Shatter" width="180"></td>
-    <td><img src="public/posters/03-melt.jpg" alt="Melt" width="180"></td>
-    <td><img src="public/posters/04-tangle.jpg" alt="Tangle" width="180"></td>
-    <td><img src="public/posters/05-moss.jpg" alt="Moss" width="180"></td>
+    <td align="center" valign="top">
+      <a href="01-fold"><img src="videos/01-fold.gif" alt="Fold" width="260"></a><br>
+      <b>Day 1: <a href="01-fold">Fold</a></b><br>
+      <a href="01-fold">Code</a> · <a href="https://adamwebsite.com/codevember/01-fold/">Live</a>
+    </td>
+    <td align="center" valign="top">
+      <a href="02-shatter"><img src="videos/02-shatter.gif" alt="Shatter" width="260"></a><br>
+      <b>Day 2: <a href="02-shatter">Shatter</a></b><br>
+      <a href="02-shatter">Code</a> · <a href="https://adamwebsite.com/codevember/02-shatter/">Live</a>
+    </td>
+    <td align="center" valign="top">
+      <a href="03-melt"><img src="videos/03-melt.gif" alt="Melt" width="260"></a><br>
+      <b>Day 3: <a href="03-melt">Melt</a></b><br>
+      <a href="03-melt">Code</a> · <a href="https://adamwebsite.com/codevember/03-melt/">Live</a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="04-tangle"><img src="videos/04-tangle.gif" alt="Tangle" width="260"></a><br>
+      <b>Day 4: <a href="04-tangle">Tangle</a></b><br>
+      <a href="04-tangle">Code</a> · <a href="https://adamwebsite.com/codevember/04-tangle/">Live</a>
+    </td>
+    <td align="center" valign="top">
+      <a href="05-moss"><img src="videos/05-moss.gif" alt="Moss" width="260"></a><br>
+      <b>Day 5: <a href="05-moss">Moss</a></b><br>
+      <a href="05-moss">Code</a> · <a href="https://adamwebsite.com/codevember/05-moss/">Live</a>
+    </td>
+    <td align="center" valign="top">
+      <a href="06-orrery"><img src="videos/06-orrery.gif" alt="Orrery" width="260"></a><br>
+      <b>Day 6: <a href="06-orrery">Orrery</a></b><br>
+      <a href="06-orrery">Code</a> · <a href="https://adamwebsite.com/codevember/06-orrery/">Live</a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="07-hollow"><img src="videos/07-hollow.gif" alt="Hollow" width="260"></a><br>
+      <b>Day 7: <a href="07-hollow">Hollow</a></b><br>
+      <a href="07-hollow">Code</a> · <a href="https://adamwebsite.com/codevember/07-hollow/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -33,8 +67,8 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 03 | [Melt](03-melt) | Ray-marched liquid metal dripping into a mirror. Grab the metal and carry it around. |
 | 04 | [Tangle](04-tangle) | A snarl of lacquered cord hanging in a shaft of light. Pull a loose end. |
 | 05 | [Moss](05-moss) | A ledge on a cliff over a forest, deep in moss made of separate fibres. |
-| 06 | [Orrery](06-orrery) | A clockwork solar system in brass, with every tooth of every gear doing its job. Turn the crank, pull it apart, drag the Sun and let the pieces chase it, or turn the whole machine into a constellation. |
-| 07 | [Hollow](07-hollow) | A giant peach afloat at sunrise, with sharks circling below. Slice it open, then grab the stone and pull it out by its dripping strands. |
+| 06 | [Orrery](06-orrery) | A clockwork solar system in brass. Turn the crank, or pull the Sun to break it apart. |
+| 07 | [Hollow](07-hollow) | A giant peach afloat at sunrise. Slice it open and pull out the stone. |
 
 ## Controls
 
@@ -61,13 +95,14 @@ Every day also has its own settings panel, with quality settings that adapt to y
 ## Project layout
 
 ```
-01-fold/ ... 05-moss/   One directory per day
+01-fold/ ... 07-hollow/ One directory per day, each with a README
 shared/engine/          Renderer, post-processing, camera, grabbing, boundaries, sound, settings
 shared/ui/              Calendar, loading screen and on-screen controls
 shared/days.ts          The 30 words, and which days are out
 shared/registry.ts      Loads each day on demand
 app/                    Next.js routes: the calendar at /, each day at /NN-word/
 public/                 Calendar posters, and scanned textures and models
+videos/                 A recording of each day, as a GIF
 scripts/                Build helpers
 ```
 
@@ -99,3 +134,7 @@ The scanned rocks, plants and moss are all CC0, from [Poly Haven](https://polyha
 ## License
 
 [MIT](LICENSE)
+
+---
+
+Developed with help from [Claude Opus 5.5](https://www.anthropic.com/claude) by Anthropic.
