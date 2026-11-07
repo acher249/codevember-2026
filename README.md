@@ -34,6 +34,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 04 | [Tangle](04-tangle) | A snarl of lacquered cord hanging in a shaft of light. Pull a loose end. |
 | 05 | [Moss](05-moss) | A ledge on a cliff over a forest, deep in moss made of separate fibres. |
 | 06 | [Orrery](06-orrery) | A clockwork solar system in brass, with every tooth of every gear doing its job. Turn the crank, pull it apart, drag the Sun and let the pieces chase it, or turn the whole machine into a constellation. |
+| 07 | [Hollow](07-hollow) | A giant peach afloat at sunrise, with sharks circling below. Slice it open, then grab the stone and pull it out by its dripping strands. |
 
 ## Controls
 
@@ -93,7 +94,7 @@ This is a personal daily challenge, so new days are mine to make, but bug report
 
 ## Credits
 
-The scanned rocks, plants and moss are all CC0, from [Poly Haven](https://polyhaven.com) and [ambientCG](https://ambientcg.com). Everyone whose work this builds on is listed in [CREDITS.md](CREDITS.md).
+The scanned rocks, plants and moss are all CC0, from [Poly Haven](https://polyhaven.com) and [ambientCG](https://ambientcg.com). The ocean in Hollow is ported from [Ultra Water](https://github.com/Humpalumps/Ultra-Water) by Humpalumps (MIT). Everyone whose work this builds on is listed in [CREDITS.md](CREDITS.md).
 
 ## License
 

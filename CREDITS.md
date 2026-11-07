@@ -55,3 +55,23 @@ Where these appear, the code says so too.
 ## Star data
 
 The constellation figures in Orrery come from [d3-celestial](https://github.com/ofrohn/d3-celestial) by Olaf Frohn, under the BSD 3-Clause license, included in full at [06-orrery/d3-celestial-LICENSE.txt](06-orrery/d3-celestial-LICENSE.txt).
+
+## Ocean
+
+The waves in Hollow are ported to WebGPU from [Ultra Water](https://github.com/Humpalumps/Ultra-Water) by [Humpalumps](https://github.com/Humpalumps), under the MIT license, included in full at [07-hollow/ultra-water-LICENSE.txt](07-hollow/ultra-water-LICENSE.txt). Thank you for sharing it.
+
+The method behind it: Jerry Tessendorf, *Simulating Ocean Water* (2001), the JONSWAP wave spectrum, from Hasselmann et al. (1973), and the Stockham FFT. The peach's fine surface detail uses bump mapping after Morten Mikkelsen, *Bump Mapping Unparametrized Surfaces on the GPU* (2010).
+
+## Sea floor
+
+The rocks and sand under the water in Hollow are scans from [Poly Haven](https://polyhaven.com), all CC0, so no credit is required, but it is due.
+
+| Asset | By |
+| --- | --- |
+| [Rock Moss Set 02](https://polyhaven.com/a/rock_moss_set_02) | Kless Gyzen |
+| [Rock 09](https://polyhaven.com/a/rock_09) | Jenelle van Heerden |
+| [Namaqualand Boulder 03](https://polyhaven.com/a/namaqualand_boulder_03) | Jenelle van Heerden, Dario Barresi |
+| [Sand 01](https://polyhaven.com/a/sand_01) | Rob Tuytel |
+| [Gravelly Sand](https://polyhaven.com/a/gravelly_sand) | Dario Barresi |
+
+The fish is the [Barramundi Fish](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/BarramundiFish) by Microsoft, also CC0, from the Khronos glTF Sample Assets.

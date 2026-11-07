@@ -236,6 +236,26 @@ body {
   border-color: var(--cv-faint);
 }
 
+/* A pill with only an icon in it: a circle the same height as the rest. */
+.cv-pill.cv-round {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  width: 36px;
+  padding: 0;
+}
+
+.cv-pill.cv-round:hover {
+  color: var(--cv-accent);
+}
+
+/* No room for them beside the calendar on a phone held upright. */
+@media (max-width: 560px) {
+  .cv-pill.cv-round {
+    display: none;
+  }
+}
+
 .cv-calendar-pill {
   display: inline-flex;
   align-items: center;
@@ -355,7 +375,7 @@ body {
   position: absolute;
   top: calc(max(16px, env(safe-area-inset-top)) + 48px);
   right: max(20px, env(safe-area-inset-right));
-  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 58px);
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 78px);
   width: 264px;
   display: flex;
   flex-direction: column;
@@ -592,21 +612,113 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.cv-notes {
+.cv-about {
   position: absolute;
   top: 50px;
   left: 0;
   width: 340px;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.cv-notes {
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
   color: #fff;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
+}
+
+.cv-overview {
+  width: 100%;
+  border: 1px solid var(--cv-line);
+  border-radius: 14px;
+  background: var(--cv-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  backdrop-filter: blur(22px) saturate(1.3);
+  pointer-events: auto;
+}
+
+.cv-overview-head {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--cv-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cv-overview-head svg {
+  color: var(--cv-dim);
+}
+
+.cv-overview-body {
+  overflow: hidden;
+}
+
+/* Overview.tsx sets the real height, to stop above the day's title. */
+.cv-overview-scroll {
+  display: grid;
+  gap: 14px;
+  max-height: max(140px, calc(100svh - 470px));
+  padding: 2px 14px 14px;
+  border-top: 1px solid var(--cv-line);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cv-faint) transparent;
+}
+
+.cv-overview-scroll section:first-child {
+  padding-top: 12px;
+}
+
+.cv-overview h3 {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cv-accent);
+}
+
+.cv-overview ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cv-overview li {
+  position: relative;
+  padding-left: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--cv-dim);
+}
+
+.cv-overview li::before {
+  content: "";
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 4px;
+  height: 1px;
+  background: var(--cv-faint);
 }
 
 @media (max-width: 900px), (hover: none) {
-  .cv-notes {
+  .cv-about {
     display: none;
   }
 }
@@ -966,6 +1078,13 @@ a.cv-step:hover {
   .cv-pill {
     min-width: 0;
     padding: 0 10px;
+  }
+}
+
+/* A phone held sideways keeps the desktop panel, so its pills start below the panel's header, not behind it. */
+@media (min-width: 721px) and (hover: none) {
+  .cv-phone-pills {
+    top: calc(max(16px, env(safe-area-inset-top)) + 100px);
   }
 }
 

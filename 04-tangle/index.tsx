@@ -544,8 +544,38 @@ const tangle: DayDefinition = {
     thickness: { type: "range", label: "Thickness", min: 0.6, max: 1.6, step: 0.05, value: 1 },
     retangle: { type: "action", label: "Re-tangle" }
   },
-  notes: "The cords run on a custom position-based solver with real self-collision, and the beads are Rapier rigid bodies pushing through them. On High it uses physically based materials with a shadow-mapped key light, screen-space global illumination and ambient occlusion, volumetric haze and temporal anti-aliasing.",
+  notes: "Lacquered cords knotted together in a beam of light. Pull any loose end and the whole tangle answers.",
   hint: "Pull a cord. Throw a bead.",
+  overview: [
+    {
+      title: "Simulation",
+      points: [
+        "A custom position-based dynamics solver in plain TypeScript runs 7 cords of 320 particles each by default.",
+        "True self-collision uses a 32,768-bucket spatial hash with diameter-sized cells, so knots cannot pass through each other."
+      ]
+    },
+    {
+      title: "Physics",
+      points: [
+        "Five metal beads are Rapier rigid bodies, and two-way coupling feeds cord push back as impulses on them.",
+        "Cords are seeded as random torus knots, rotated by uniform random quaternions and resampled to equal arc length."
+      ]
+    },
+    {
+      title: "Rendering",
+      points: [
+        "Every cord is skinned into one 12-sided tube mesh with parallel-transported frames and rounded caps, drawn in one call.",
+        "Tube vertices rebuild on the CPU each frame after one smoothing pass that removes collision zigzag."
+      ]
+    },
+    {
+      title: "Shaders",
+      points: [
+        "A TSL clearcoat physical material draws a woven twist in colour and roughness from per-vertex arc length.",
+        "Last frame's tube positions are fed to the shader by hand so motion vectors stay correct."
+      ]
+    }
+  ],
   Scene
 };
 

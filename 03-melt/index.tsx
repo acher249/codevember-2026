@@ -512,8 +512,38 @@ const melt: DayDefinition = {
     gravity: { type: "range", label: "Gravity", min: 0, max: 1.6, step: 0.01, value: 1 },
     pour: { type: "action", label: "Pour" }
   },
-  notes: "The metal is ray-marched per pixel as signed distance field metaballs, moved by a custom fluid-like solver and not a physics engine. Reflections are traced in the shader against a procedural HDR room, so it needs no screen-space global illumination, with ambient occlusion from the depth and temporal anti-aliasing on top.",
+  notes: "Liquid metal swelling and dripping from a ring into a mirrored pool. Pull the drops around and watch them merge and splash.",
   hint: "Grab the metal and carry it around, or pull a drop off and throw it. Tap the mirror to splash it.",
+  overview: [
+    {
+      title: "Rendering",
+      points: [
+        "The metal is ray-marched per pixel inside a 100-unit back-faced sphere, not drawn as meshes.",
+        "Up to 30 metaball spheres plus the source are blended with Inigo Quilez's polynomial smooth minimum."
+      ]
+    },
+    {
+      title: "Simulation",
+      points: [
+        "Hanging drops grow until they let go, trailing a three-sphere strand that necks and snaps into a droplet.",
+        "Touching drops attract, and the larger swallows the smaller while conserving volume and momentum."
+      ]
+    },
+    {
+      title: "Lighting and materials",
+      points: [
+        "Reflections are traced in-shader with a second march, hitting other metal or a procedural HDR room.",
+        "Four metals: Fresnel-tinted chrome, gold and copper, plus a thin-film oil whose colour shifts with viewing angle."
+      ]
+    },
+    {
+      title: "Optimisations",
+      points: [
+        "Rays start and stop at an analytic bounding sphere of radius 9, skipping empty space entirely.",
+        "Quality tiers set march steps (60/42/28), bounce steps (22/14/off) and blob capacity (30/22/14)."
+      ]
+    }
+  ],
   Scene
 };
 

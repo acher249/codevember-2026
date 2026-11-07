@@ -860,8 +860,38 @@ const fold: DayDefinition = {
     breathe: { type: "toggle", label: "Breathe", value: true },
     flatten: { type: "action", label: "Smooth my creases" }
   },
-  notes: "A custom fold rig solves every facet on the CPU and streams the matrices to the GPU in a texture, with no physics engine. On High it uses a shadow-mapped key light, screen-space global illumination and ambient occlusion, volumetric haze and temporal anti-aliasing, and the river is a TSL water shader.",
+  notes: "A strip of countryside printed on a paper map, with a river and a flock of sheep. Fold it along its creases and the land folds with it.",
   hint: "Grab a gold crease and pull the way its arrows point. Drag anywhere else to look around. Pick up a sheep.",
+  overview: [
+    {
+      title: "Simulation",
+      points: [
+        "A custom fold rig, with no physics engine, solves up to 256 flat facets on the CPU every frame.",
+        "Up to 160 sheep walk the sheet in its own flat coordinates, climbing walls and falling under gravity when a face turns down."
+      ]
+    },
+    {
+      title: "Shaders",
+      points: [
+        "Facet matrices stream to the GPU in a 256 by 6 float DataTexture, read per vertex with textureLoad in TSL.",
+        "The river shader bends its normal using two layers of moving mx_noise, with Fresnel sky reflection and foam where it crosses folds."
+      ]
+    },
+    {
+      title: "Rendering",
+      points: [
+        "Up to 42,000 instanced grass blades sway in TSL wind and follow their facet as it folds.",
+        "Land and paper back are 2048 pixel canvas-painted survey maps, with the grass taking its colour from the land map."
+      ]
+    },
+    {
+      title: "Optimisations",
+      points: [
+        "A 48 by 26 spatial grid speeds facet lookups when seating grass, props and sheep.",
+        "Grass count drops from 42,000 to 28,000 or 8,000, and families only swap while the sheet lies flat."
+      ]
+    }
+  ],
   Scene
 };
 

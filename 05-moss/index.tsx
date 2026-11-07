@@ -1269,8 +1269,38 @@ const moss: DayDefinition = {
     gravity: { type: "range", label: "Gravity", min: -1, max: 2, step: 0.01, value: 1 },
     focus: { type: "range", label: "Depth of field", min: 0, max: 4, step: 0.01, value: 3 }
   },
-  notes: "The moss is hundreds of thousands of separate fibres placed by the GPU from baked maps of the cliff, with no repeating texture, in patches of tall grassy moss and short velvet and golden mosses. Rocks are Rapier rigid bodies on a collider of the sculpted cliff, with CC0 photo-scanned textures and plants. On High the water has true planar reflections, with a shadow-mapped sun, ambient occlusion, temporal anti-aliasing and depth of field.",
+  notes: "A mossy ledge high on a cliff, in the rain. Lean in close to the moss, or pick up a rock and send it over the edge.",
   hint: "Get close to the moss. Carry a stone, or send one over the edge. The rocks hang in the air until you turn gravity back up.",
+  overview: [
+    {
+      title: "Rendering",
+      points: [
+        "Moss is up to about 670,000 instanced fibres on High, in three grids of 6 mm, 18 mm and 65 mm cells.",
+        "The fibre grids follow wherever the camera's line of sight first meets the cliff, found by a stepped ray march every other frame."
+      ]
+    },
+    {
+      title: "Shaders",
+      points: [
+        "TSL vertex shaders build every fibre from baked 520 x 520 float textures of cliff position and surface normal.",
+        "Fibres never thin below roughly a pixel and fade to a shared colour beyond 1.2 m, which stops distant flicker."
+      ]
+    },
+    {
+      title: "Physics",
+      points: [
+        "Rapier boulders use convex hulls cut from their own procedural mesh and land on a 170 x 92 trimesh of the cliff.",
+        "Dragging uses a coarse pick mesh plus a Rapier ray against fixed colliders, so rocks behind the cliff cannot be grabbed."
+      ]
+    },
+    {
+      title: "Lighting and materials",
+      points: [
+        "Pools use a planar reflector at 0.45 resolution, with rain rings from a hashed cell grid perturbing it.",
+        "Reflections see cheap stand-in moss on their own layer, because the real fibres are too many to draw twice."
+      ]
+    }
+  ],
   Scene
 };
 

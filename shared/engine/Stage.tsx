@@ -262,6 +262,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
         hint={loaded?.day.day === day.day ? definition?.hint : undefined}
         prompt={loaded?.day.day === day.day ? definition?.prompt : undefined}
         notes={loaded?.day.day === day.day ? definition?.notes : undefined}
+        overview={loaded?.day.day === day.day ? definition?.overview : undefined}
         Overlay={loaded?.day.day === day.day ? definition?.Overlay : undefined}
         settings={loaded?.day.day === day.day ? settings : null}
         phonePills={loaded?.day.day === day.day ? definition?.phonePills : undefined}

@@ -29,7 +29,10 @@ export type ActionSetting = {
   label: string;
 };
 
-export type Setting = RangeSetting | ToggleSetting | ChoiceSetting | ActionSetting;
+// A control can belong to one choice of another setting, and only shows while that is chosen.
+export type OverviewSection = { title: string; points: string[] };
+
+export type Setting = (RangeSetting | ToggleSetting | ChoiceSetting | ActionSetting) & { when?: { setting: string; is: string } };
 export type SettingsSchema = Record<string, Setting>;
 export type SettingValue = number | boolean | string;
 
@@ -80,6 +83,8 @@ export type DayDefinition = {
   hint?: string;
   // How the scene is made, in a couple of sentences. Shown under the wordmark on desktop.
   notes?: string;
+  // How it is built, in more depth: a few short sections behind a collapsed panel under the notes, on desktop.
+  overview?: OverviewSection[];
   // Shown in the middle of the screen until the day calls dismissPrompt.
   prompt?: { title: string; detail?: string };
   // Anything of the day's own to show over the scene, as ordinary page content.

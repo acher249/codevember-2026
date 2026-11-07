@@ -757,9 +757,39 @@ const shatter: DayDefinition = {
     shatterAll: { type: "action", label: "Break all of it" },
     mend: { type: "action", label: "Mend the sky" }
   },
-  notes: "Each piece of sky is a Rapier rigid body with its own convex hull collider, picked by ray against its exact triangles, and the deer read those colliders to walk on top of the fallen ice. The ice paints the sky and adds a planar reflection pass for the deer. On High it uses screen-space global illumination and ambient occlusion, volumetric haze, shadow maps and temporal anti-aliasing, over a procedural sky shader.",
+  notes: "The sky is a sheet of glass. Break it, and the pieces fall onto a frozen lake where deer wander between them.",
   hint: "Grab a fallen piece and throw it. Turn gravity past zero and they rise.",
   prompt: { title: "Shoot the sky", detail: "Click or tap anywhere up there" },
+  overview: [
+    {
+      title: "Rendering",
+      points: [
+        "The sky dome is cut into spherical Voronoi cells, up to 300 extruded plates on High, all in one merged draw call.",
+        "Each vertex finds its plate's live position and rotation in a float DataTexture, read in the vertex shader with textureLoad."
+      ]
+    },
+    {
+      title: "Physics",
+      points: [
+        "Each released plate becomes a Rapier dynamic rigid body with a convex hull collider built from its own corners.",
+        "Deer cast Rapier rays a stride ahead to step onto low fallen plates and walk around tall ones."
+      ]
+    },
+    {
+      title: "Shaders",
+      points: [
+        "A TSL night sky behind the dome paints hashed twinkling stars, a noise-driven Milky Way, a swaying aurora and a moon.",
+        "The deer walk, nod, graze and flick their tails entirely in the vertex shader, driven by a per-vertex rig attribute."
+      ]
+    },
+    {
+      title: "Optimisations",
+      points: [
+        "Sleeping rigid bodies are skipped each frame, and the state texture only uploads when something moved.",
+        "Each deer's pose, axes, motion and style share one 13-float interleaved instance buffer, inside WebGPU's eight-buffer limit."
+      ]
+    }
+  ],
   Scene
 };
 

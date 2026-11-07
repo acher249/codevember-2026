@@ -7,10 +7,11 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type Compon
 import { dayHref, days, promptDayFor, type CodevemberDay } from "../days";
 import type { QualityChoice } from "../engine/quality";
 import type { SettingsStore } from "../engine/settings";
-import type { QualityTier, Setting } from "../engine/types";
+import type { OverviewSection, QualityTier, Setting } from "../engine/types";
 import { resetPrompt, usePromptDone } from "../engine/prompt";
 import { sound, useSoundOn } from "../engine/sound";
 import { SETTLE, TextMotion, fade, inTurn, rise, riseBig } from "./motion";
+import { Overview } from "./Overview";
 
 const pad = (day: number) => String(day).padStart(2, "0");
 
@@ -210,6 +211,7 @@ type HudProps = {
   hint?: string;
   prompt?: { title: string; detail?: string };
   notes?: string;
+  overview?: OverviewSection[];
   Overlay?: ComponentType;
   settings: SettingsStore | null;
   phonePills?: string[];
@@ -220,7 +222,17 @@ type HudProps = {
   fpsRef: RefObject<HTMLElement | null>;
 };
 
-export function Hud({ day, hint, prompt, notes, Overlay, settings, phonePills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
+function ControlRow({ name, setting, store }: { name: string; setting: Setting; store: SettingsStore }) {
+  const chosen = useSyncExternalStore(store.subscribe, () => (setting.when ? store.get(setting.when.setting) : null), () => null);
+  if (setting.when && chosen !== setting.when.is) return null;
+  return (
+    <motion.div className="cv-panel-row" variants={rise}>
+      <Control name={name} setting={setting} store={store} />
+    </motion.div>
+  );
+}
+
+export function Hud({ day, hint, prompt, notes, overview, Overlay, settings, phonePills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
   const router = useRouter();
   const [panelOpen, setPanelOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -265,14 +277,29 @@ export function Hud({ day, hint, prompt, notes, Overlay, settings, phonePills, t
     <div className={`cv-hud ${hidden ? "cv-hud-hidden" : ""}`}>
       <header className="cv-bar">
         <Link className="cv-pill cv-calendar-pill" href="/" prefetch={false}>
-          Codevember calendar
+          Codevember Calendar
         </Link>
-        {notes ? (
-          <motion.p key={`notes-${day.day}`} className="cv-notes" variants={rise} initial="hidden" animate="show" transition={{ delay: 0.5 }}>
-            {notes}
-          </motion.p>
+        {notes || overview ? (
+          <div className="cv-about" key={`about-${day.day}`}>
+            {notes ? (
+              <motion.p className="cv-notes" variants={rise} initial="hidden" animate="show" transition={{ delay: 0.5 }}>
+                {notes}
+              </motion.p>
+            ) : null}
+            {overview ? <Overview sections={overview} /> : null}
+          </div>
         ) : null}
         <div className="cv-bar-actions">
+        <a className="cv-pill cv-round" href="https://x.com/ajc_builds" target="_blank" rel="noreferrer" aria-label="Adam on X">
+          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+            <path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </a>
+        <a className="cv-pill cv-round" href="https://www.linkedin.com/in/adamchernick/" target="_blank" rel="noreferrer" aria-label="Adam on LinkedIn">
+          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+            <path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z" />
+          </svg>
+        </a>
         <button type="button" className="cv-pill" aria-pressed={soundOn} onClick={() => sound.toggle()}>
           <Swap text={soundOn ? "Sound on" : "Sound off"} />
         </button>
@@ -338,11 +365,7 @@ export function Hud({ day, hint, prompt, notes, Overlay, settings, phonePills, t
           <div className="cv-panel-inner">
             <motion.div className="cv-panel-scroll" key={`controls-${day.day}`} variants={inTurn(0.035, 0.1)} initial="hidden" animate={panelOpen ? "show" : "hidden"}>
               {hasControls
-                ? Object.entries(settings.schema).map(([name, setting]) => (
-                    <motion.div key={name} className="cv-panel-row" variants={rise}>
-                      <Control name={name} setting={setting} store={settings} />
-                    </motion.div>
-                  ))
+                ? Object.entries(settings.schema).map(([name, setting]) => <ControlRow key={name} name={name} setting={setting} store={settings} />)
                 : null}
               {hasControls ? (
                 <motion.div className="cv-panel-row" variants={rise}>
