@@ -9,6 +9,7 @@ import type { QualityChoice } from "../engine/quality";
 import type { SettingsStore } from "../engine/settings";
 import type { OverviewSection, QualityTier, Setting } from "../engine/types";
 import { resetPrompt, usePromptDone } from "../engine/prompt";
+import { GithubIcon, REPO } from "./github";
 import { sound, useSoundOn } from "../engine/sound";
 import { SETTLE, TextMotion, fade, inTurn, rise, riseBig } from "./motion";
 import { Overview } from "./Overview";
@@ -290,6 +291,9 @@ export function Hud({ day, hint, prompt, notes, overview, Overlay, settings, pho
           </div>
         ) : null}
         <div className="cv-bar-actions">
+        <a className="cv-pill cv-round" href={REPO} target="_blank" rel="noreferrer" aria-label="The code on GitHub">
+          <GithubIcon />
+        </a>
         <a className="cv-pill cv-round" href="https://x.com/ajc_builds" target="_blank" rel="noreferrer" aria-label="Adam on X">
           <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
             <path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />

@@ -43,6 +43,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 7: <a href="07-hollow">Hollow</a></b><br>
       <a href="07-hollow">Code</a> · <a href="https://adamwebsite.com/codevember/07-hollow/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="08-tesseract"><img src="videos/08-tesseract.gif" alt="Tesseract" width="260"></a><br>
+      <b>Day 8: <a href="08-tesseract">Tesseract</a></b><br>
+      <a href="08-tesseract">Code</a> · <a href="https://adamwebsite.com/codevember/08-tesseract/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -69,6 +74,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 05 | [Moss](05-moss) | A ledge on a cliff over a forest, deep in moss made of separate fibres. |
 | 06 | [Orrery](06-orrery) | A clockwork solar system in brass. Turn the crank, or pull the Sun to break it apart. |
 | 07 | [Hollow](07-hollow) | A giant peach afloat at sunrise. Slice it open and pull out the stone. |
+| 08 | [Tesseract](08-tesseract) | A cube from the fourth dimension, turning itself inside out. |
 
 ## Controls
 

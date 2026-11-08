@@ -26,15 +26,21 @@ type ShotName =
   | "tick"
   | "hoof"
   | "creak"
-  | "click";
+  | "click"
+  | "peel";
 
-// size is roughly 0 to 1, how big the thing making the sound is. pan is -1 to 1.
-type ShotOptions = { gain?: number; pitch?: number; pan?: number; size?: number };
+// size is roughly 0 to 1, how big the thing making the sound is. pan is -1 to 1. variant picks one of a family, such as
+// the kinds of peel.
+type ShotOptions = { gain?: number; pitch?: number; pan?: number; size?: number; variant?: string };
+
+// Every way a thing can sound as it is peeled off, for a day to choose from.
+export const PEEL_SOUNDS = ["sticker", "tape", "velcro", "paper", "orange", "suction", "silk", "clay", "porcelain", "leaf"] as const;
 
 type Bed = { level: (value: number, seconds?: number) => void; tone: (value: number, seconds?: number) => void; stop: () => void };
 
 const STORE_KEY = "codevember-sound";
-const MAX_VOICES = 48;
+// Room enough that a burst of grainy one-shots, like peels, is not cut off halfway.
+const MAX_VOICES = 96;
 const MIN_GAP = 0.025;
 
 type NoiseColour = "white" | "pink" | "brown";
@@ -408,12 +414,79 @@ class SoundEngine {
         this.note(at, "sine", 2300 * pitch, 1300 * pitch, 0.0006, 0.014, 0.16 * gain, out);
         this.note(at, "sine", 380 * pitch, 240 * pitch, 0.001, 0.03, 0.2 * gain, out);
         break;
+      case "peel":
+        this.peel(options.variant ?? "sticker", at, pitch, gain, out);
+        break;
       case "creak": {
         const grains = 6 + Math.floor(r() * 7);
         const f = 300 * pitch * (0.8 + r() * 0.5);
         for (let i = 0; i < grains; i++) this.note(at + (i / grains) * 0.34, "sawtooth", f * (1 + i * 0.015), f * (1 + i * 0.015), 0.002, 0.018, 0.08 * gain, out, 1500);
         break;
       }
+    }
+  }
+
+  // A surface coming away: each kind its own texture of tearing, sticking and letting go. Every one hits at once, so
+  // that it lands with the moment it is played for, and is short and sparing of voices, so many can overlap.
+  private peel(kind: string, at: number, pitch: number, gain: number, out: AudioNode) {
+    const r = Math.random;
+    switch (kind) {
+      case "tape":
+        // Sticky tape: a sharp rip that rises as it goes.
+        this.burst(at, "white", "bandpass", 1200 * pitch, 1.6, 0.003, 0.2, 0.34 * gain, out, 3800 * pitch);
+        for (let i = 0; i < 5; i++) this.burst(at + i * 0.03, "white", "bandpass", (1800 + i * 300) * pitch, 3, 0.001, 0.01, 0.13 * gain, out);
+        break;
+      case "velcro":
+        // A coarse rasp of hooks letting go.
+        for (let i = 0; i < 9; i++) this.burst(at + (i / 9) * 0.16 + r() * 0.006, "white", "bandpass", (700 + r() * 900) * pitch, 2.5, 0.001, 0.014, (0.14 + r() * 0.1) * gain, out);
+        this.burst(at, "pink", "lowpass", 1300 * pitch, 0.7, 0.004, 0.18, 0.14 * gain, out);
+        break;
+      case "paper":
+        // A crisp sheet: a crackle at once, with a soft swell behind it.
+        this.burst(at, "white", "bandpass", 3200 * pitch, 2.2, 0.001, 0.012, 0.2 * gain, out);
+        this.burst(at, "pink", "bandpass", 2400 * pitch, 0.8, 0.008, 0.18, 0.18 * gain, out);
+        for (let i = 0; i < 4; i++) this.burst(at + 0.01 + r() * 0.12, "white", "bandpass", (2000 + r() * 4000) * pitch, 2.4, 0.001, 0.007 + r() * 0.012, (0.06 + r() * 0.1) * gain, out);
+        break;
+      case "orange":
+        // Peel off fruit: a wet squelch with a little spray.
+        this.burst(at, "pink", "lowpass", 1000 * pitch, 1.2, 0.004, 0.16, 0.32 * gain, out, 500 * pitch);
+        this.note(at, "sine", 420 * pitch, 180 * pitch, 0.004, 0.11, 0.16 * gain, out);
+        for (let i = 0; i < 3; i++) this.burst(at + 0.02 + r() * 0.1, "white", "highpass", 5000 * pitch, 0.8, 0.001, 0.02, (0.03 + r() * 0.04) * gain, out);
+        break;
+      case "suction":
+        // A seal breaking: a quick rising pop.
+        this.note(at, "sine", 200 * pitch, 760 * pitch, 0.003, 0.09, 0.38 * gain, out);
+        this.burst(at, "pink", "bandpass", 700 * pitch, 1.4, 0.002, 0.07, 0.2 * gain, out, 1900 * pitch);
+        break;
+      case "silk":
+        // Fabric drawn away: an airy hush with a faint shimmer.
+        this.burst(at, "pink", "highpass", 2800 * pitch, 0.5, 0.02, 0.24, 0.15 * gain, out, 5200 * pitch);
+        this.burst(at, "white", "bandpass", 7000 * pitch, 1.2, 0.02, 0.18, 0.04 * gain, out);
+        break;
+      case "clay":
+        // A soft slab lifting off clay: a muffled thock, then a dull drag.
+        this.note(at, "sine", 210 * pitch, 90 * pitch, 0.002, 0.12, 0.34 * gain, out);
+        this.burst(at, "brown", "lowpass", 700 * pitch, 0.8, 0.002, 0.16, 0.4 * gain, out);
+        for (let i = 0; i < 2; i++) this.burst(at + 0.03 + r() * 0.08, "pink", "bandpass", (500 + r() * 400) * pitch, 2, 0.002, 0.03, 0.08 * gain, out);
+        break;
+      case "porcelain":
+        // A glazed chip coming free: a click and a bright ring or two.
+        this.burst(at, "white", "bandpass", 4500 * pitch, 2, 0.0008, 0.012, 0.22 * gain, out);
+        for (let i = 0; i < 2; i++) {
+          const f = (2600 + r() * 3200) * pitch;
+          this.note(at + i * 0.015, "sine", f, f * 0.995, 0.001, 0.12 + r() * 0.16, (0.05 + r() * 0.05) * gain, out);
+        }
+        break;
+      case "leaf":
+        // A dry leaf: a sharp crackle, and a few more after it.
+        this.burst(at, "white", "highpass", 3200 * pitch, 1.5, 0.0008, 0.012, 0.24 * gain, out);
+        this.burst(at, "pink", "bandpass", 1800 * pitch, 0.7, 0.01, 0.2, 0.06 * gain, out);
+        for (let i = 0; i < 4; i++) this.burst(at + 0.02 + Math.pow(r(), 0.7) * 0.2, "white", "highpass", (2600 + r() * 3000) * pitch, 1.5, 0.0008, 0.006 + r() * 0.01, (0.1 + r() * 0.14) * gain, out);
+        break;
+      default:
+        // Sticker: a tacky zip of tiny releases, starting at once and quickening as it comes away.
+        for (let i = 0; i < 8; i++) this.burst(at + Math.pow(i / 8, 1.4) * 0.14, "white", "bandpass", (2400 + i * 200 + r() * 400) * pitch, 2.8, 0.0008, 0.009, (0.1 + r() * 0.08) * gain, out);
+        this.burst(at, "pink", "bandpass", 1900 * pitch, 0.9, 0.006, 0.16, 0.1 * gain, out, 3200 * pitch);
     }
   }
 

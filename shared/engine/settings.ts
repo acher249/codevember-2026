@@ -13,11 +13,13 @@ export class SettingsStore {
     this.reset();
   }
 
+  // Back to the defaults. A scene can also hear this, as the action "reset", to put back whatever state it keeps itself.
   reset() {
     for (const [key, setting] of Object.entries(this.schema)) {
       if (setting.type !== "action") this.values.set(key, setting.value);
     }
     this.listeners.forEach((listener) => listener());
+    this.trigger("reset");
   }
 
   get(key: string) {

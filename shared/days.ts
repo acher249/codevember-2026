@@ -48,7 +48,8 @@ const LIVE: Record<number, string> = {
   4: "A snarl of lacquered cord hanging in a shaft of light. Pull a loose end and the whole knot answers.",
   5: "A ledge high on a cliff, over a forest full of birds, deep in old moss. Get close to it, carry a stone, or send one over the edge.",
   6: "A clockwork solar system in brass, with every tooth of every gear doing its job. Turn the crank, pull it apart, drag the Sun and let the pieces chase it, or turn the whole machine into a constellation.",
-  7: "A giant peach afloat at sunrise, with sharks circling below. Slice it open, then grab the stone and pull it out by its dripping strands."
+  7: "A giant peach afloat at sunrise, with sharks circling below. Slice it open, then grab the stone and pull it out by its dripping strands.",
+  8: "A cube from the fourth dimension, turning itself inside out."
 };
 
 const CODEVEMBER_YEAR = 2026;

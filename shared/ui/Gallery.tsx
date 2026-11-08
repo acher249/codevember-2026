@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { dayHref, days, daySlug, promptDayFor } from "../days";
+import { GithubIcon, REPO } from "./github";
 import { SETTLE, TextMotion, inTurn, rise, riseBig } from "./motion";
 
 const pad = (day: number) => String(day).padStart(2, "0");
@@ -16,6 +17,12 @@ export function Gallery() {
     <TextMotion>
     <main className="cv-gallery">
       <motion.header className="cv-gallery-head" variants={inTurn(0.1, 0.05)} initial="hidden" animate="show">
+        <motion.div className="cv-gallery-top" variants={rise}>
+          <a className="cv-mark cv-github" href={REPO} target="_blank" rel="noreferrer">
+            Github
+            <GithubIcon size={14} />
+          </a>
+        </motion.div>
         <motion.h1 variants={riseBig}>Codevember</motion.h1>
         <motion.p variants={rise}>
           One word, one real-time 3D experience, every day of November 2026. WebGPU, shaders, light you can

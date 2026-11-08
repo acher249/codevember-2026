@@ -1184,6 +1184,18 @@ a.cv-step:hover {
   padding: 8px 0 44px;
 }
 
+.cv-gallery-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cv-gallery-head .cv-mark.cv-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cv-gallery-head .cv-mark {
   display: inline-block;
   position: relative;
