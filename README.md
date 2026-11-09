@@ -48,6 +48,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 8: <a href="08-tesseract">Tesseract</a></b><br>
       <a href="08-tesseract">Code</a> · <a href="https://adamwebsite.com/codevember/08-tesseract/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="09-membrane"><img src="videos/09-membrane.gif" alt="Membrane" width="260"></a><br>
+      <b>Day 9: <a href="09-membrane">Membrane</a></b><br>
+      <a href="09-membrane">Code</a> · <a href="https://adamwebsite.com/codevember/09-membrane/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -75,6 +80,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 06 | [Orrery](06-orrery) | A clockwork solar system in brass. Turn the crank, or pull the Sun to break it apart. |
 | 07 | [Hollow](07-hollow) | A giant peach afloat at sunrise. Slice it open and pull out the stone. |
 | 08 | [Tesseract](08-tesseract) | A cube from the fourth dimension, turning itself inside out. |
+| 09 | [Membrane](09-membrane) | A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off. |
 
 ## Controls
 
