@@ -5,6 +5,8 @@ import { uniform } from "three/tsl";
 import { orbitPoint } from "../shared/engine/controls";
 import { focusBlur, focusDistance } from "../shared/engine/Post";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
+
 const AXES = 4;
 const step = new THREE.Matrix4();
 

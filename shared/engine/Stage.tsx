@@ -6,6 +6,7 @@ import * as THREE from "three/webgpu";
 import { dayLoaders } from "../registry";
 import { dayHref, days, type CodevemberDay } from "../days";
 import { Hud } from "../ui/Hud";
+import "./instancing";
 import { LOAD_ORDER, type LoadStep } from "../ui/Loader";
 import { CameraRig, GrabProvider, useGrabRegistry } from "./controls";
 import { Post } from "./Post";
@@ -57,26 +58,85 @@ type LoadedDay = { id: number; day: CodevemberDay; definition: DayDefinition };
 // that work and frames have stopped stalling.
 const TIER_RANK: Record<QualityTier, number> = { low: 0, medium: 1, high: 2 };
 
+// While a day loads, every shader three builds for drawing is built in the background: the GPU compiles it off to the
+// side, and whatever uses it is left out of the frame until it is ready. Built the usual way, on the spot, a frame waits
+// for each one, and in Chrome so does everything else on screen, the loader included. Behind the loader nothing is
+// missed by an object sitting out a frame or two. Returns a function that puts things back as they were.
+type Pipelines = { getForRender: (renderObject: unknown, promises?: { push: (p: Promise<void>) => void } | null) => unknown; updateForRender: (renderObject: unknown) => void };
+
+function buildInBackground(gl: THREE.WebGPURenderer, count: { pending: number; lastNewAt: number }) {
+  const pipelines = (gl as unknown as { _pipelines?: Pipelines })._pipelines;
+  if (!pipelines || !pipelines.getForRender) return () => {};
+  const own = Object.prototype.hasOwnProperty.call(pipelines, "updateForRender");
+  const before = pipelines.updateForRender;
+  const tracker = {
+    push(promise: Promise<void>) {
+      count.pending += 1;
+      count.lastNewAt = performance.now();
+      const settle = () => {
+        count.pending -= 1;
+      };
+      promise.then(settle, settle);
+    }
+  };
+  pipelines.updateForRender = (renderObject) => {
+    pipelines.getForRender(renderObject, tracker);
+  };
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (own) pipelines.updateForRender = before;
+    else delete (pipelines as Partial<Pipelines>).updateForRender;
+  };
+}
+
 function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderPhase>; onCompiling: () => void; onReady: () => void }) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const size = useThree((state) => state.size);
   const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
   const run = useRef({ frames: 0, smooth: 0, gpuDone: false, gpuDoneAt: 0, finished: false });
   const unhidden = useRef<THREE.Object3D[]>([]);
+  const compiling = useRef({ pending: 0, lastNewAt: 0, release: () => {} });
 
   useEffect(() => {
+    let cancelled = false;
     phase.current = "hold";
     onCompiling();
-    // Compiling blocks the main thread, so let the loader paint its new step before starting.
+    const shaders = compiling.current;
+    shaders.release = buildInBackground(gl, shaders);
+    // Let the loader paint its new step before starting.
     let frame = requestAnimationFrame(() => {
-      frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(async () => {
+        // Shaders are compiled ahead of the first frame, hidden things too, in small pieces between which the page gets
+        // to draw, with the GPU building its pipelines off to the side. Compiled on the first draw instead, they would
+        // all be done in one go, holding up the whole screen, the loader included, until they were.
+        const hidden: THREE.Object3D[] = [];
+        scene.traverse((object) => {
+          if (object.visible) return;
+          object.visible = true;
+          hidden.push(object);
+        });
+        try {
+          await gl.compileAsync(scene, camera);
+        } catch (error) {
+          // The first frame compiles whatever is left, as before.
+          console.warn(error);
+        }
+        for (const object of hidden) object.visible = false;
+        if (cancelled) return;
         // The backend caches the canvas depth buffer, and on some loads it holds one from before the
         // canvas had its real size, which invalidates every frame. Setting the size clears that cache.
         gl.setSize(size.width, size.height, false);
         phase.current = "warm";
       });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      shaders.release();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -107,11 +167,14 @@ function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderP
       else markDone();
       return;
     }
-    if (!state.gpuDone) return;
+    // Not until every shader asked for so far is built, and a few frames have gone by without a new one.
+    const shaders = compiling.current;
+    if (!state.gpuDone || shaders.pending > 0 || performance.now() - shaders.lastNewAt < 150) return;
     state.smooth = delta < 1 / 12 ? state.smooth + 1 : 0;
     // A slow machine may never run smoothly. Don't keep it waiting for that.
     if (state.smooth >= 4 || performance.now() - state.gpuDoneAt > 2500) {
       state.finished = true;
+      shaders.release();
       phase.current = "live";
       onReady();
     }
@@ -195,7 +258,8 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
     <div className="cv-stage">
       <Canvas
         className="cv-canvas"
-        shadows="soft"
+        // three r185 folded the soft filter into PCF, which softens by each light's shadow.radius.
+        shadows="percentage"
         dpr={Math.min(DPR_STEPS[0], globalThis.devicePixelRatio || 1)}
         // Well past any sky dome plus the furthest the camera can get from it, or zooming out cuts a black hole in the sky.
         camera={{ fov: 36, near: 0.05, far: 400 }}
@@ -221,7 +285,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
           <SettingsProvider value={settings}>
             <GrabProvider value={registry}>
               <LookContext.Provider value={applyLook}>
-                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} chromatic={definition?.passes?.chromatic} phase={phase} />
+                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} phase={phase} />
                 <AdaptiveQuality
                   choice={choice}
                   floor={definition?.autoFloor}
@@ -234,7 +298,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
                 />
                 {definition ? (
                   <>
-                    <CameraRig key={`rig-${loaded.day.day}`} position={definition.camera.position} target={definition.camera.target} fov={definition.camera.fov} registry={registry} />
+                    <CameraRig key={`rig-${loaded.day.day}`} position={definition.camera.position} target={definition.camera.target} fov={definition.camera.fov} limits={definition.camera.limits} registry={registry} />
                     {definition.extents ? <Extents key={`extents-${loaded.day.day}`} {...definition.extents} /> : null}
                     <SceneBoundary key={loaded.day.day} onError={setError}>
                       <Suspense fallback={null}>

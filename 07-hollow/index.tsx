@@ -21,6 +21,8 @@ import { Boats, Dinghies, Dolphins, FarLand, Fish, Planes, Sharks, SkyDome, Skyl
 import { useReefAssets, type ReefAssets } from "./reef";
 import { CENTRE_Y, JUICE_LEVEL, R, cavityAt, cavityMiddleY, cavityRadius, radialSurface, skinRadius, stoneRadius } from "./shape";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
+
 const FRAME_WIDE = R * 1.2;
 const FRAME_TALL = R * 1.15;
 const REACH = R * 1.22;
@@ -71,6 +73,28 @@ const fromCeiling = (): Pick<Drop, "position" | "wait" | "swell" | "speed" | "st
   const out = Math.random() * 0.75;
   return { position: cavityAt(Math.cos(angle) * out, 1, Math.sin(angle) * out), wait: Math.random() * 4, swell: 0, speed: 0, strand: -1, along: 0 };
 };
+
+// Where the drops start, and how they go: some off the ceiling, some crawling the strands, some down the walls.
+function scatterDrops(tier: "low" | "medium" | "high", strands: number) {
+  const list: Drop[] = [];
+  for (let i = 0; i < 12; i++) list.push({ ...fromCeiling(), size: 0.024 + Math.random() * 0.02 });
+  // The rest crawl the strands.
+  const crawlers = tier === "low" ? 10 : 26;
+  for (let i = 0; i < crawlers; i++) list.push({ ...fromCeiling(), strand: Math.floor(Math.random() * strands), along: Math.random(), wait: Math.random() * 3, size: 0.018 + Math.random() * 0.03 });
+  // And some run down the inside walls of the hollow.
+  const wallDrops = tier === "low" ? 16 : 44;
+  for (let i = 0; i < wallDrops; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    list.push({ ...fromCeiling(), wall: new THREE.Vector3(Math.cos(angle), 0.2 + Math.random() * 1.6, Math.sin(angle)), wait: Math.random() * 5, size: 0.016 + Math.random() * 0.026 });
+  }
+  return list;
+}
+
+// Each drop yellow or red, at random.
+function tintDrops(mesh: THREE.InstancedMesh, count: number) {
+  const tint = new THREE.Color();
+  for (let i = 0; i < count; i++) mesh.setColorAt(i, tint.copy(Math.random() < 0.5 ? YELLOW : RED));
+}
 
 // How high the swell has lifted something, for those things that cannot read the waves. Long and slow, like the waves that matter to them.
 // What the mirror in the water does not show. Fuzz, hair and everything under the surface would cost a great deal, and be lost in the waves.
@@ -172,26 +196,12 @@ function Peach({ tier, assets }: { tier: "low" | "medium" | "high"; assets: Reef
     return mesh;
   }, [geometry.fuzz, materials.fuzz, shells]);
 
-  const drops = useMemo<Drop[]>(() => {
-    const list: Drop[] = [];
-    for (let i = 0; i < 12; i++) list.push({ ...fromCeiling(), size: 0.024 + Math.random() * 0.02 });
-    // The rest crawl the strands.
-    const crawlers = tier === "low" ? 10 : 26;
-    for (let i = 0; i < crawlers; i++) list.push({ ...fromCeiling(), strand: Math.floor(Math.random() * seed.strands.length), along: Math.random(), wait: Math.random() * 3, size: 0.018 + Math.random() * 0.03 });
-    // And some run down the inside walls of the hollow.
-    const wallDrops = tier === "low" ? 16 : 44;
-    for (let i = 0; i < wallDrops; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      list.push({ ...fromCeiling(), wall: new THREE.Vector3(Math.cos(angle), 0.2 + Math.random() * 1.6, Math.sin(angle)), wait: Math.random() * 5, size: 0.016 + Math.random() * 0.026 });
-    }
-    return list;
-  }, [tier, seed]);
+  const drops = useMemo(() => scatterDrops(tier, seed.strands.length), [tier, seed]);
 
   const dropMesh = useMemo(() => {
     const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 10), materials.drop, drops.length);
     mesh.frustumCulled = false;
-    const tint = new THREE.Color();
-    for (let i = 0; i < drops.length; i++) mesh.setColorAt(i, tint.copy(Math.random() < 0.5 ? YELLOW : RED));
+    tintDrops(mesh, drops.length);
     return mesh;
   }, [materials.drop, drops.length]);
 
@@ -319,7 +329,6 @@ function Peach({ tier, assets }: { tier: "low" | "medium" | "high"; assets: Reef
     });
     camera.layers.enable(NOT_REFLECTED);
     return () => camera.layers.disable(NOT_REFLECTED);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera, fuzz, dropMesh, juiceDraw.proxy]);
 
   useEffect(() => {

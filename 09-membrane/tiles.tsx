@@ -289,7 +289,8 @@ function buildForm(name: string, pitch: number): Form {
 // `standoff` is how far out from the surface the tile sits, so its patch is laid at that height and still closes up.
 // `turns` is each tile's rotation as a quaternion: the instance matrix moves the points, but a hand-made normal has to be
 // turned to match, or every tile would be lit as if it faced the same way.
-function tileMaterial(tiles: THREE.InstancedBufferAttribute, curls: THREE.InstancedBufferAttribute, turns: THREE.InstancedBufferAttribute, under: boolean, surface: Surface, standoff: number) {
+// `fades`, for the pieces that have come away, is how much of each is still there, so it can fade out rather than vanish.
+function tileMaterial(tiles: THREE.InstancedBufferAttribute, curls: THREE.InstancedBufferAttribute, turns: THREE.InstancedBufferAttribute, under: boolean, surface: Surface, standoff: number, fades?: THREE.InstancedBufferAttribute) {
   // Glazed clay: a soft matte body under a thin, slightly rough glaze that catches the studio's light.
   const material = new THREE.MeshPhysicalNodeMaterial({ roughness: 0.55, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.38, sheen: 0.2, sheenRoughness: 0.8, side: THREE.DoubleSide });
   const tile = instancedDynamicBufferAttribute(tiles, "vec4") as any;
@@ -430,12 +431,16 @@ function tileMaterial(tiles: THREE.InstancedBufferAttribute, curls: THREE.Instan
     material.colorNode = mix(body, ink, line);
     material.emissiveNode = ink.mul(line).mul(3.2);
   }
+  if (fades) {
+    material.transparent = true;
+    material.opacityNode = varying(instancedDynamicBufferAttribute(fades, "float")) as any;
+  }
   return material;
 }
 
 // `clear` is how far it was from the object when last checked, less how far it has moved since: while that stays above
 // nothing, it cannot have reached the object, so the check is skipped.
-type Loose = { position: THREE.Vector3; velocity: THREE.Vector3; turn: THREE.Quaternion; spin: THREE.Vector3; scale: THREE.Vector3; span: [number, number]; roll: number; age: number; landed: number; clear: number; near: { index: number } };
+type Loose = { position: THREE.Vector3; velocity: THREE.Vector3; turn: THREE.Quaternion; rest: THREE.Quaternion | null; spin: THREE.Vector3; scale: THREE.Vector3; span: [number, number]; roll: number; age: number; landed: number; clear: number; near: { index: number } };
 
 // Clay tiles over a whole object, a layer under every tile, meeting so closely they read as one skin. Swipe across it and the tiles peel off in your wake, as
 // fast as you swipe; click it and a slow ripple of peeling runs out from where you touched. Each one floats off on the
@@ -523,6 +528,7 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
       floaters: buffer(),
       floaterTurns: buffer(),
       floaterCurls: buffer(),
+      floaterFades: new THREE.InstancedBufferAttribute(new Float32Array(capacity).fill(1), 1).setUsage(THREE.DynamicDrawUsage),
       loose: [] as Loose[]
     };
   }, [capacity]);
@@ -532,7 +538,7 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
     const curved = shape.surface.kind !== "flat";
     const top = new THREE.InstancedMesh(tileGeometry(0.15, curved, "top", made), tileMaterial(data.tiles, data.curls, data.turns, false, shape.surface, DEPTH * 1.5), capacity);
     const under = new THREE.InstancedMesh(tileGeometry(0.15, curved, "under", made), tileMaterial(data.tiles, data.curls, data.turns, true, shape.surface, DEPTH / 2), capacity);
-    const floating = new THREE.InstancedMesh(tileGeometry(0.15, curved, "loose", made), tileMaterial(data.floaters, data.floaterCurls, data.floaterTurns, false, FLAT, DEPTH * 1.5), capacity);
+    const floating = new THREE.InstancedMesh(tileGeometry(0.15, curved, "loose", made), tileMaterial(data.floaters, data.floaterCurls, data.floaterTurns, false, FLAT, DEPTH * 1.5, data.floaterFades), capacity);
     for (const mesh of [top, under, floating]) {
       mesh.receiveShadow = true;
       mesh.frustumCulled = false;
@@ -766,6 +772,7 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
               .add(new THREE.Vector3((Math.random() - 0.5) * 0.12, 0.1, (Math.random() - 0.5) * 0.12))
               .multiplyScalar(kick),
             turn: layout.base[i].clone(),
+            rest: null,
             spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar((0.4 + Math.random() * 0.8) * (0.5 + kick * 0.5)),
             scale: s.extent ? new THREE.Vector3(s.extent[0] / SIZE, s.extent[1] / SIZE, 1) : new THREE.Vector3(s.scale[0], s.scale[1], 1),
             span: s.span,
@@ -792,7 +799,6 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
       loose.age += delta;
       const t = loose.age;
       let gone = t > FLOAT;
-      let size = 1;
       if (loose.landed < 0) {
         // Gravity and the swing come on gradually, so it lifts away as a drifting piece does before it starts to fall.
         const settle = THREE.MathUtils.smoothstep(t, 0, 0.9);
@@ -821,28 +827,32 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
           // Only one that comes to rest right on the very top, where there is no slope, stays there.
           if (away.y > 0.985 && loose.velocity.lengthSq() < 0.002) {
             loose.landed = t;
+            // Curl side out, or the curl would bend down into the skin. Turned over gently, below.
             spinAxis.set(0, 0, 1).applyQuaternion(loose.turn);
-            const facing = spinAxis.dot(away) >= 0 ? away.clone() : away.clone().negate();
-            loose.turn.premultiply(new THREE.Quaternion().setFromUnitVectors(spinAxis.clone(), facing));
+            loose.rest = new THREE.Quaternion().setFromUnitVectors(spinAxis.clone(), away.clone()).multiply(loose.turn);
           }
         }
         step.setFromAxisAngle(spinAxis.copy(loose.spin).normalize(), loose.spin.length() * delta * (1 + Math.abs(swing) * 0.5));
         loose.turn.multiply(step);
         if (loose.position.y <= floor) {
-          // Down: it settles flat, whichever way up it landed.
+          // Down: it settles flat with its curl upward, as a curl bending down would go through the floor. Turned over
+          // gently, below, rather than snapped.
           loose.landed = t;
           loose.position.y = floor;
           spinAxis.set(0, 0, 1).applyQuaternion(loose.turn);
-          const upright = spinAxis.y >= 0 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, -1, 0);
-          loose.turn.premultiply(new THREE.Quaternion().setFromUnitVectors(spinAxis.clone(), upright));
+          loose.rest = new THREE.Quaternion().setFromUnitVectors(spinAxis.clone(), new THREE.Vector3(0, 1, 0)).multiply(loose.turn);
         }
       }
+      // Older pieces still in the air fade away too, rather than vanish.
+      let fade = 1 - THREE.MathUtils.smoothstep(t, FLOAT - 1, FLOAT);
       if (loose.landed >= 0) {
         const lying = t - loose.landed;
         gone = lying > LIE;
-        // At last it shrinks away into the floor.
-        size = 1 - THREE.MathUtils.smoothstep(lying, LIE - 1, LIE);
+        if (loose.rest) loose.turn.slerp(loose.rest, 1 - Math.exp(-delta * 10));
+        // At last it fades away where it lies.
+        fade = 1 - THREE.MathUtils.smoothstep(lying, LIE - 1.5, LIE);
       }
+      data.floaterFades.setX(f, fade);
       if (gone) {
         // The last one takes its place, picture and all.
         const last = data.loose.length - 1;
@@ -855,12 +865,13 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
           meshes.floating.setMatrixAt(f, matrix);
           data.floaterTurns.setXYZW(f, moved.turn.x, moved.turn.y, moved.turn.z, moved.turn.w);
           data.floaterCurls.setXYZW(f, FOLD_END, moved.roll, moved.span[0], moved.span[1]);
+          data.floaterFades.setX(f, data.floaterFades.getX(last));
         }
         data.loose.pop();
         continue;
       }
       data.floaterTurns.setXYZW(f, loose.turn.x, loose.turn.y, loose.turn.z, loose.turn.w);
-      matrix.compose(loose.position, loose.turn, place.copy(loose.scale).multiplyScalar(size));
+      matrix.compose(loose.position, loose.turn, place.copy(loose.scale));
       meshes.floating.setMatrixAt(f, matrix);
       // Still curled as it floats.
       data.floaterCurls.setXYZW(f, FOLD_END, loose.roll, loose.span[0], loose.span[1]);
@@ -868,7 +879,7 @@ function Covered({ formName, pitch }: { formName: string; pitch: number }) {
     meshes.floating.count = data.loose.length;
     // A crowd of tiny pieces casts only a haze of shadow, and costs a great deal to cast, so past a point they cast none.
     meshes.floating.castShadow = data.loose.length < 2500;
-    if (data.loose.length > 0) send([meshes.floating.instanceMatrix, data.floaterTurns, data.floaters, data.floaterCurls], 0, data.loose.length);
+    if (data.loose.length > 0) send([meshes.floating.instanceMatrix, data.floaterTurns, data.floaters, data.floaterCurls, data.floaterFades], 0, data.loose.length);
     // The peel is heard as tiles start to come away: one at a time from a swipe, a quiet texture from a ripple.
     if (began > 0 && st.ticks <= 0) {
       st.ticks = 0.1;

@@ -55,7 +55,7 @@ const tesseract: DayDefinition = {
     {
       title: "Rendering",
       points: [
-        "React Three Fiber and three.js r184 on the WebGPU renderer. There are no meshes or models: one inside-out sphere fills the screen.",
+        "React Three Fiber and three.js r187 on the WebGPU renderer. There are no meshes or models: one inside-out sphere fills the screen.",
         "Its pixel shader, written in TSL and compiled to WGSL, ray marches signed distance fields for every pixel."
       ]
     },

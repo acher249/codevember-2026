@@ -52,6 +52,12 @@ Where these appear, the code says so too.
 - **Lehmer random numbers**, with constants from Park and Miller (1988)
 - **The `fract(sin(...) * 43758.5453)` hash**, a long-standing shader one-liner whose author isn't known for certain
 
+## Caustics
+
+The light in Caustic is drawn as a mesh, one ray per vertex, after [Evan Wallace](https://medium.com/@evanwallace/rendering-realtime-caustics-in-webgl-2a99a29a0b2c)'s WebGL Water. The glass Suzannes are traced through maps of their near and far sides drawn from the sun, in the spirit of Chris Wyman, *An Approximate Image-Space Approach for Interactive Refraction* (2005).
+
+Suzanne, Blender's monkey, comes from the [three.js examples](https://github.com/mrdoob/three.js/tree/dev/examples/models/json) (MIT) and is the [Blender Foundation](https://www.blender.org)'s. Their resting poses were found by dropping her in [Rapier](https://rapier.rs).
+
 ## Star data
 
 The constellation figures in Orrery come from [d3-celestial](https://github.com/ofrohn/d3-celestial) by Olaf Frohn, under the BSD 3-Clause license, included in full at [06-orrery/d3-celestial-LICENSE.txt](06-orrery/d3-celestial-LICENSE.txt).

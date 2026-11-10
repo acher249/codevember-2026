@@ -65,10 +65,23 @@ export type Extents = { centre: [number, number, number]; radius: number; floor?
 // air is how thick the air gets, up to a limit. By default it thickens from the lens at a fixed rate. airRate changes that rate,
 // and airBehindFocus starts it that far in front of the focus, so that depth reads the same at any zoom. sharpSky leaves
 // whatever wrote no depth, such as a star dome, out of both the air and the blur.
+// A lens blur by where things fall on screen rather than how far away they are, for what writes no depth, such as
+// Gaussian splats: none left of `from` (0 to 1 across the screen), full at `to`, `amount` setting how soft. `left` adds
+// some at the left edge too, full at `to` and gone by `from`, at `strength` of the right's.
+export type SideBlur = { from: number; to: number; amount: number; left?: { from: number; to: number; strength: number } };
+
 export type DepthOfField = { range: number; air?: number; airRate?: number; airBehindFocus?: number; sharpSky?: boolean };
 
+// Keeps the camera near where it starts: `turn` degrees of orbit each way, and `move` units of travel each way for the point
+// it looks at and for its distance from that point. Either can instead give each way its own amount. Travel is measured
+// along the world's axes: left and right along x, down and up along y, and nearer and further as the distance.
+type EachWay<T extends string> = number | Record<T, number>;
+// `ahead` lets flying forward carry the point looked at that far on, past the subject, and `closest` keeps the camera that
+// far, across the ground, from where that point began, so it can come close to the subject but never into it.
+export type CameraLimits = { turn: EachWay<"left" | "right" | "up" | "down">; move: EachWay<"left" | "right" | "down" | "up" | "nearer" | "further">; ahead?: number; closest?: number };
+
 export type DayDefinition = {
-  camera: { position: [number, number, number]; target: [number, number, number]; fov?: number };
+  camera: { position: [number, number, number]; target: [number, number, number]; fov?: number; limits?: CameraLimits };
   look?: Partial<Look>;
   extents?: Extents;
   // The settings that get their own pills on a phone, down the right of the screen. The panel holds the rest.
@@ -78,7 +91,7 @@ export type DayDefinition = {
   // Auto starts no higher than this, on a day so heavy that stepping down later would stall it with a rebuild.
   autoStart?: QualityTier;
   // Passes a scene has no use for, so it need not pay for them. Both default to on.
-  passes?: { bounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: DepthOfField; chromatic?: number };
+  passes?: { bounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: DepthOfField; sideBlur?: SideBlur; chromatic?: number };
   settings?: SettingsSchema;
   hint?: string;
   // How the scene is made, in a couple of sentences. Shown under the wordmark on desktop.

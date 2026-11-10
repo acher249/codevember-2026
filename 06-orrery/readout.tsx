@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { dayOfYear } from "./bands";
 
 // How many years the Earth's arm has gone round since the page opened. The clockwork writes it and this reads it.
-export const clock = { years: 0, longitude: (_id: string) => 0 };
+export const clock = { years: 0, longitude: ((() => 0) as (id: string) => number) };
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];

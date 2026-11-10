@@ -54,6 +54,13 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <a href="09-membrane">Code</a> · <a href="https://adamwebsite.com/codevember/09-membrane/">Live</a>
     </td>
   </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="10-caustic"><img src="videos/10-caustic.gif" alt="Caustic" width="260"></a><br>
+      <b>Day 10: <a href="10-caustic">Caustic</a></b><br>
+      <a href="10-caustic">Code</a> · <a href="https://adamwebsite.com/codevember/10-caustic/">Live</a>
+    </td>
+  </tr>
 </table>
 
 ## Quick start
@@ -81,6 +88,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 07 | [Hollow](07-hollow) | A giant peach afloat at sunrise. Slice it open and pull out the stone. |
 | 08 | [Tesseract](08-tesseract) | A cube from the fourth dimension, turning itself inside out. |
 | 09 | [Membrane](09-membrane) | A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off. |
+| 10 | [Caustic](10-caustic) | Coloured glass in low sun, its light bent into bright colours on the table. |
 
 ## Controls
 

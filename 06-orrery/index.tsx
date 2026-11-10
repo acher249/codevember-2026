@@ -27,6 +27,8 @@ import { BODIES, PlanetCard, SKY_BODIES, addMachineCards, anchor, setHovered } f
 import { Readout, clock } from "./readout";
 import { Space, type SkyLights } from "./sky";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
+
 type Mode = "mechanism" | "loose" | "form";
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -483,7 +485,7 @@ function Clockwork({ tier, picked, hovered, lights }: { tier: string; picked: { 
   const createBodies = () => {
     state.lastWorld = world.bodies;
     state.born = performance.now();
-    parts.forEach((part, index) => {
+    parts.forEach((part) => {
       if (part === sun) return;
       const mesh = part.mesh;
       const description = rapier.RigidBodyDesc.dynamic()

@@ -26,6 +26,8 @@ import {
   vec4
 } from "three/tsl";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
+
 const KEY = new THREE.Vector3(-0.5, 0.75, 0.42).normalize();
 
 type MetalOptions = { color: string; shade: string; roughness: number; grain?: "spun" | "straight"; bump?: number; sheen?: number };

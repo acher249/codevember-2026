@@ -16,7 +16,7 @@ Run it locally with `npm run dev` from the repo root, then open <http://localhos
 
 ### Rendering
 
-- React Three Fiber and three.js r184 on the WebGPU renderer, with every surface a TSL node material.
+- React Three Fiber and three.js r187 on the WebGPU renderer, with every surface a TSL node material.
 - Lit by a soft studio of light boxes baked into an environment map, plus one shadow-casting key light.
 
 ### Peeling

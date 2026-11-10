@@ -13,6 +13,8 @@ import { KeyLight, StudioEnvironment, StudioFloor } from "../shared/engine/studi
 import type { DayDefinition } from "../shared/engine/types";
 import { FORM_OPTIONS, Tiles } from "./tiles";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
+
 // A soft studio gradient: warm grey overhead, falling to near black below, with the floor fading into its horizon.
 const SKY_TOP = "#6b645c";
 const HORIZON = "#2c2926";
@@ -123,7 +125,7 @@ const membrane: DayDefinition = {
     {
       title: "Rendering",
       points: [
-        "React Three Fiber and three.js r184 on the WebGPU renderer, with every surface a TSL node material.",
+        "React Three Fiber and three.js r187 on the WebGPU renderer, with every surface a TSL node material.",
         "Lit by a soft studio of light boxes baked into an environment map, plus one shadow-casting key light."
       ]
     },

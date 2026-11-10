@@ -42,6 +42,8 @@ import { sound } from "../shared/engine/sound";
 import { MONTHS, SEASONS, ZODIAC, bandStrip, makeBandMasks, type Band } from "./bands";
 import { SIGNS, SKY_FIGURES } from "./signs";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
+
 const DOME = 100;
 const v = (x: number, y: number, z: number) => vec3(x, y, z) as any;
 

@@ -50,7 +50,8 @@ const LIVE: Record<number, string> = {
   6: "A clockwork solar system in brass, with every tooth of every gear doing its job. Turn the crank, pull it apart, drag the Sun and let the pieces chase it, or turn the whole machine into a constellation.",
   7: "A giant peach afloat at sunrise, with sharks circling below. Slice it open, then grab the stone and pull it out by its dripping strands.",
   8: "A cube from the fourth dimension, turning itself inside out.",
-  9: "A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off."
+  9: "A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off.",
+  10: "Coloured glass in low sun, its light bent into bright colours on the table."
 };
 
 const CODEVEMBER_YEAR = 2026;

@@ -10,5 +10,6 @@ export const dayLoaders: Record<string, () => Promise<{ default: DayDefinition }
   "06-orrery": () => import("../06-orrery"),
   "07-hollow": () => import("../07-hollow"),
   "08-tesseract": () => import("../08-tesseract"),
-  "09-membrane": () => import("../09-membrane")
+  "09-membrane": () => import("../09-membrane"),
+  "10-caustic": () => import("../10-caustic")
 };

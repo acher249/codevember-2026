@@ -739,7 +739,7 @@ export function Underwater({ assets, time, noise, under, specks, shafts, reef, w
       mesh.layers.set(OVERLAY_LAYER);
     }
     return { bed, shaftMesh, speckMesh };
-  }, [time, noise, under, specks, shafts]);
+  }, [time, under, specks, shafts]);
   useEffect(
     () => () => {
       parts.bed.dispose();

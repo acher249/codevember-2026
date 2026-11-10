@@ -5,9 +5,9 @@ import { useEffect, useMemo, type RefObject } from "react";
 import * as THREE from "three/webgpu";
 import {
   add,
-  colorToDirection,
+  unpackRGBToNormal,
   diffuseColor,
-  directionToColor,
+  packNormalToRGB,
   dot,
   exp,
   float,
@@ -38,7 +38,7 @@ import { fxaa } from "three/addons/tsl/display/FXAANode.js";
 import { gaussianBlur } from "three/addons/tsl/display/GaussianBlurNode.js";
 import { ssgi } from "three/addons/tsl/display/SSGINode.js";
 import { traa } from "three/addons/tsl/display/TRAANode.js";
-import type { Look, QualityTier, RenderPhase, DepthOfField } from "./types";
+import type { Look, QualityTier, RenderPhase, DepthOfField, SideBlur } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model swizzles or MRT lookups. */
 
@@ -100,6 +100,7 @@ type PostProps = {
   bounce?: boolean;
   overlay?: boolean;
   depthOfField?: DepthOfField;
+  sideBlur?: SideBlur;
   // How far the colours split at the edge of the frame. Nothing on the low tier.
   chromatic?: number;
   phase: RefObject<RenderPhase>;
@@ -109,7 +110,7 @@ type PostProps = {
 //   high    SSGI (bounce + AO), haze, bloom, TRAA
 //   medium  GTAO, haze, bloom, TRAA
 //   low     bloom and FXAA, for phones and slow machines
-export function Post({ look, quality, hasHaze, bounce = true, overlay = false, depthOfField, chromatic, phase }: PostProps) {
+export function Post({ look, quality, hasHaze, bounce = true, overlay = false, depthOfField, sideBlur, chromatic, phase }: PostProps) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
@@ -147,7 +148,7 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
         mrt({
           output,
           diffuseColor,
-          normal: directionToColor(normalView),
+          normal: packNormalToRGB(normalView),
           velocity
         })
       );
@@ -157,7 +158,7 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
       const beauty = scenePass.getTextureNode("output");
       const depth = scenePass.getTextureNode("depth");
       const normalNode = scenePass.getTextureNode("normal");
-      const decodedNormal = sample((uv: any) => colorToDirection(normalNode.sample(uv)));
+      const decodedNormal = sample((uv: any) => unpackRGBToNormal(normalNode.sample(uv)));
       useTemporal = true;
 
       if (tier === "high" && bounce) {
@@ -218,6 +219,13 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
       color = dof(color, isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ, focusDistance, uniform(depthOfField.range), focusBlur);
     }
 
+    if (sideBlur) {
+      const soft: any = gaussianBlur(color, sideBlur.amount, tier === "low" ? 3 : 5);
+      let weight: any = smoothstep(sideBlur.from, sideBlur.to, screenUV.x);
+      if (sideBlur.left) weight = weight.max(float(1).sub(smoothstep(sideBlur.left.to, sideBlur.left.from, screenUV.x)).mul(sideBlur.left.strength));
+      color = vec4((mix as any)((color as any).rgb, soft.rgb, weight), 1) as any;
+    }
+
     if (chromatic && tier !== "low") {
       color = chromaticAberration(color as any, uniform(chromatic), vec2(0.5, 0.5) as any, float(1) as any) as any;
     }
@@ -252,7 +260,7 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
     return { stack, tuners, hazeDepth, sceneDepth };
     // Only the things that change the graph's shape are dependencies. Look values go through tuners.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, chromatic, uniforms]);
+  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, sideBlur, chromatic, uniforms]);
 
   useEffect(() => {
     gl.toneMappingExposure = look.exposure;
