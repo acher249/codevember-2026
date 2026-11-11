@@ -117,7 +117,7 @@ function Control({ name, setting, store }: { name: string; setting: Setting; sto
     return (
       <label className="cv-control cv-control-row">
         <span>{setting.label}</span>
-        <input type="checkbox" checked={value as boolean} onChange={(event) => store.set(name, event.target.checked)} />
+        <input className="cv-switch" type="checkbox" role="switch" checked={value as boolean} onChange={(event) => store.set(name, event.target.checked)} />
       </label>
     );
   }

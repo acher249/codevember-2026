@@ -32,7 +32,7 @@ export type ActionSetting = {
 // A control can belong to one choice of another setting, and only shows while that is chosen.
 export type OverviewSection = { title: string; points: string[] };
 
-export type Setting = (RangeSetting | ToggleSetting | ChoiceSetting | ActionSetting) & { when?: { setting: string; is: string } };
+export type Setting = (RangeSetting | ToggleSetting | ChoiceSetting | ActionSetting) & { when?: { setting: string; is: string | boolean } };
 export type SettingsSchema = Record<string, Setting>;
 export type SettingValue = number | boolean | string;
 
@@ -81,7 +81,9 @@ type EachWay<T extends string> = number | Record<T, number>;
 export type CameraLimits = { turn: EachWay<"left" | "right" | "up" | "down">; move: EachWay<"left" | "right" | "down" | "up" | "nearer" | "further">; ahead?: number; closest?: number };
 
 export type DayDefinition = {
-  camera: { position: [number, number, number]; target: [number, number, number]; fov?: number; limits?: CameraLimits };
+  // `phone`, if given, is where the camera starts instead on a narrow screen, where a desktop's framing would leave the
+  // subject off to one side.
+  camera: { position: [number, number, number]; target: [number, number, number]; fov?: number; limits?: CameraLimits; phone?: { position: [number, number, number]; target: [number, number, number]; fov?: number } };
   look?: Partial<Look>;
   extents?: Extents;
   // The settings that get their own pills on a phone, down the right of the screen. The panel holds the rest.

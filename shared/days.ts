@@ -51,7 +51,8 @@ const LIVE: Record<number, string> = {
   7: "A giant peach afloat at sunrise, with sharks circling below. Slice it open, then grab the stone and pull it out by its dripping strands.",
   8: "A cube from the fourth dimension, turning itself inside out.",
   9: "A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off.",
-  10: "Coloured glass in low sun, its light bent into bright colours on the table."
+  10: "Coloured glass in low sun, its light bent into bright colours on the table.",
+  11: "A rusted fence post, scanned from the real thing."
 };
 
 const CODEVEMBER_YEAR = 2026;

@@ -27,11 +27,12 @@ type ShotName =
   | "hoof"
   | "creak"
   | "click"
-  | "peel";
+  | "peel"
+  | "brush";
 
 // size is roughly 0 to 1, how big the thing making the sound is. pan is -1 to 1. variant picks one of a family, such as
-// the kinds of peel.
-type ShotOptions = { gain?: number; pitch?: number; pan?: number; size?: number; variant?: string };
+// the kinds of peel. gap is the fewest seconds since the last of the same name, for sounds asked for every frame.
+type ShotOptions = { gain?: number; pitch?: number; pan?: number; size?: number; variant?: string; gap?: number };
 
 // Every way a thing can sound as it is peeled off, for a day to choose from.
 export const PEEL_SOUNDS = ["sticker", "tape", "velcro", "paper", "orange", "suction", "silk", "clay", "porcelain", "leaf"] as const;
@@ -44,6 +45,29 @@ const MAX_VOICES = 96;
 const MIN_GAP = 0.025;
 
 type NoiseColour = "white" | "pink" | "brown";
+
+// A tenth of a second of silence, as a WAV, for unlocking the music element on a phone.
+const SILENCE = (() => {
+  if (typeof window === "undefined") return "";
+  const samples = 800;
+  const bytes = new DataView(new ArrayBuffer(44 + samples * 2));
+  const text = (at: number, value: string) => [...value].forEach((c, i) => bytes.setUint8(at + i, c.charCodeAt(0)));
+  text(0, "RIFF");
+  bytes.setUint32(4, 36 + samples * 2, true);
+  text(8, "WAVEfmt ");
+  bytes.setUint32(16, 16, true);
+  bytes.setUint16(20, 1, true);
+  bytes.setUint16(22, 1, true);
+  bytes.setUint32(24, 8000, true);
+  bytes.setUint32(28, 16000, true);
+  bytes.setUint16(32, 2, true);
+  bytes.setUint16(34, 16, true);
+  text(36, "data");
+  bytes.setUint32(40, samples * 2, true);
+  let binary = "";
+  new Uint8Array(bytes.buffer).forEach((b) => (binary += String.fromCharCode(b)));
+  return `data:audio/wav;base64,${btoa(binary)}`;
+})();
 
 class SoundEngine {
   private context: AudioContext | null = null;
@@ -60,6 +84,8 @@ class SoundEngine {
   private musicElement: HTMLAudioElement | null = null;
   private musicGain: GainNode | null = null;
   private wantedMusic: { url: string; level: number } | null = null;
+  // Whether the element has played once from a press. On a phone only that lets it start again later on its own.
+  private primed = false;
   private missingMusic = new Set<string>();
 
   constructor() {
@@ -85,6 +111,7 @@ class SoundEngine {
   }
 
   private wake() {
+    if (this.context) this.prime();
     if (this.context) {
       // Not only "suspended": iOS also has "interrupted", after a call or a trip to the home screen.
       if (this.context.state !== "running" && !document.hidden) void this.context.resume();
@@ -94,6 +121,13 @@ class SoundEngine {
     }
     const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Context) return;
+    // On an iPhone, sound made this way is silenced by the ring switch unless it asks to be played like media.
+    try {
+      const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = "playback";
+    } catch {
+      // Older Safari has no audio session to ask.
+    }
     this.context = new Context();
     this.context.onstatechange = () => this.changedState();
     void this.context.resume();
@@ -107,15 +141,30 @@ class SoundEngine {
     this.master.connect(limiter);
     limiter.connect(this.context.destination);
     for (const bed of this.beds) bed.start();
+    this.prime();
     this.startMusic();
   }
 
-  private startMusic() {
-    const wanted = this.wantedMusic;
-    if (!wanted || !this.context || !this.master || this.muted || document.hidden) return;
-    const url = new URL(wanted.url, window.location.href).href;
-    if (this.missingMusic.has(url)) return;
-    if (!this.musicElement) {
+  // Plays a moment of silence from the first press, if no track has been asked for yet, so that a track asked for
+  // later, by a day that loads after the press, is allowed to start without another. Drags do not count as a press on a
+  // phone, so otherwise the music would wait for a tap.
+  private prime() {
+    if (this.primed || this.wantedMusic || !this.context) return;
+    const element = this.element();
+    if (!element.src) element.src = SILENCE;
+    element
+      .play()
+      .then(() => {
+        this.primed = true;
+        if (!this.wantedMusic) element.pause();
+      })
+      .catch(() => {
+        // The next press tries again.
+      });
+  }
+
+  private element() {
+    if (!this.musicElement && this.context && this.master) {
       this.musicElement = new Audio();
       const created = this.musicElement;
       created.addEventListener("error", () => {
@@ -129,14 +178,25 @@ class SoundEngine {
       this.context.createMediaElementSource(this.musicElement).connect(this.musicGain);
       this.musicGain.connect(this.master);
     }
-    const element = this.musicElement;
+    return this.musicElement as HTMLAudioElement;
+  }
+
+  private startMusic() {
+    const wanted = this.wantedMusic;
+    if (!wanted || !this.context || !this.master || this.muted || document.hidden) return;
+    const url = new URL(wanted.url, window.location.href).href;
+    if (this.missingMusic.has(url)) return;
+    const element = this.element();
     if (element.src !== url) element.src = url;
     // Also when it is already playing: it may be on its way out, if the same track has just been asked for again.
     (this.musicGain as GainNode).gain.setTargetAtTime(wanted.level, this.context.currentTime, 0.8);
     if (!element.paused) return;
-    element.play().catch(() => {
-      // Refused or interrupted. The next press tries again.
-    });
+    element
+      .play()
+      .then(() => (this.primed = true))
+      .catch(() => {
+        // Refused or interrupted. The next press tries again.
+      });
   }
 
   // Asks for a day's track, and returns what stops it again.
@@ -291,7 +351,7 @@ class SoundEngine {
     const context = this.context;
     if (!context || context.state !== "running" || this.muted || this.voices > MAX_VOICES) return;
     const now = context.currentTime;
-    if (now - (this.lastShot.get(name) ?? -1) < MIN_GAP) return;
+    if (now - (this.lastShot.get(name) ?? -1) < Math.max(MIN_GAP, options.gap ?? 0)) return;
     this.lastShot.set(name, now);
     const gain = options.gain ?? 1;
     const pitch = (options.pitch ?? 1) * (0.94 + Math.random() * 0.12);
@@ -416,6 +476,11 @@ class SoundEngine {
         break;
       case "peel":
         this.peel(options.variant ?? "sticker", at, pitch, gain, out);
+        break;
+      case "brush":
+        // Feathers stirred: a muffled, pillowy puff of down.
+        this.burst(at, "brown", "lowpass", 900 * pitch, 0.6, 0.04, 0.32, 0.4 * gain, out, 500 * pitch);
+        this.burst(at, "pink", "bandpass", 1400 * pitch, 0.6, 0.05, 0.2, 0.05 * gain, out);
         break;
       case "creak": {
         const grains = 6 + Math.floor(r() * 7);

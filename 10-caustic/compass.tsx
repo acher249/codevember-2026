@@ -96,8 +96,9 @@ export function Compass() {
         .cv-caustic-compass .dial:active { cursor: grabbing; }
         .cv-caustic-compass .label { font: 500 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(243, 233, 221, 0.62); }
         @media (max-width: 720px) {
-          .cv-caustic-compass { right: 32px; bottom: 170px; }
-          .cv-caustic-compass .dial { width: 150px; height: 150px; }
+          .cv-caustic-compass { right: 24px; bottom: 104px; gap: 4px; }
+          .cv-caustic-compass .dial { width: 112px; height: 112px; }
+          .cv-caustic-compass .label { font-size: 10px; }
         }
       `}</style>
       <div ref={dial} className="dial" role="slider" aria-label="Direction of the light" aria-valuemin={0} aria-valuemax={359} aria-valuenow={shown}>

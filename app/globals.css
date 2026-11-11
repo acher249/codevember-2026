@@ -470,6 +470,53 @@ body {
   align-items: center;
 }
 
+.cv-control-row:has(.cv-switch) {
+  cursor: pointer;
+}
+
+/* A sliding switch, in place of the browser's checkbox. */
+.cv-switch {
+  appearance: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.25s ease;
+}
+
+.cv-switch::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.28s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.cv-switch:checked {
+  background: var(--cv-accent);
+}
+
+.cv-switch:checked::before {
+  transform: translateX(18px);
+}
+
+.cv-switch:active::before {
+  width: 26px;
+}
+
+.cv-switch:checked:active::before {
+  transform: translateX(14px);
+}
+
 .cv-control-label {
   display: flex;
   justify-content: space-between;

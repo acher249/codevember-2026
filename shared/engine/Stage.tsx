@@ -91,12 +91,19 @@ function buildInBackground(gl: THREE.WebGPURenderer, count: { pending: number; l
   };
 }
 
+// Where the camera starts: a day's own view for phones, on a narrow screen, if it has one.
+function startingView(camera: DayDefinition["camera"]) {
+  const narrow = typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
+  const view = narrow && camera.phone ? camera.phone : camera;
+  return { position: view.position, target: view.target, fov: view.fov ?? camera.fov };
+}
+
 function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderPhase>; onCompiling: () => void; onReady: () => void }) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const size = useThree((state) => state.size);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
-  const run = useRef({ frames: 0, smooth: 0, gpuDone: false, gpuDoneAt: 0, finished: false });
+  const run = useRef({ frames: 0, smooth: 0, gpuDone: false, gpuDoneAt: 0, finished: false, warmAt: 0 });
   const unhidden = useRef<THREE.Object3D[]>([]);
   const compiling = useRef({ pending: 0, lastNewAt: 0, release: () => {} });
 
@@ -119,7 +126,8 @@ function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderP
           hidden.push(object);
         });
         try {
-          await gl.compileAsync(scene, camera);
+          // A phone's driver can leave a compile hanging. Give up waiting after a while; the first frames build the rest.
+          await Promise.race([gl.compileAsync(scene, camera), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
         } catch (error) {
           // The first frame compiles whatever is left, as before.
           console.warn(error);
@@ -158,6 +166,7 @@ function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderP
     if (phase.current !== "warm" || state.finished) return;
     state.frames += 1;
     if (state.frames === 1) {
+      state.warmAt = performance.now();
       const markDone = () => {
         state.gpuDone = true;
         state.gpuDoneAt = performance.now();
@@ -169,10 +178,13 @@ function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderP
     }
     // Not until every shader asked for so far is built, and a few frames have gone by without a new one.
     const shaders = compiling.current;
-    if (!state.gpuDone || shaders.pending > 0 || performance.now() - shaders.lastNewAt < 150) return;
+    // Nor forever: a pipeline a phone never finishes building must not leave the loader stuck. Past this the scene shows,
+    // and anything still building joins it when it is ready.
+    const overdue = performance.now() - state.warmAt > 12000;
+    if (!overdue && (!state.gpuDone || shaders.pending > 0 || performance.now() - shaders.lastNewAt < 150)) return;
     state.smooth = delta < 1 / 12 ? state.smooth + 1 : 0;
     // A slow machine may never run smoothly. Don't keep it waiting for that.
-    if (state.smooth >= 4 || performance.now() - state.gpuDoneAt > 2500) {
+    if (overdue || state.smooth >= 4 || performance.now() - state.gpuDoneAt > 2500) {
       state.finished = true;
       shaders.release();
       phase.current = "live";
@@ -298,7 +310,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
                 />
                 {definition ? (
                   <>
-                    <CameraRig key={`rig-${loaded.day.day}`} position={definition.camera.position} target={definition.camera.target} fov={definition.camera.fov} limits={definition.camera.limits} registry={registry} />
+                    <CameraRig key={`rig-${loaded.day.day}`} {...startingView(definition.camera)} limits={definition.camera.limits} registry={registry} />
                     {definition.extents ? <Extents key={`extents-${loaded.day.day}`} {...definition.extents} /> : null}
                     <SceneBoundary key={loaded.day.day} onError={setError}>
                       <Suspense fallback={null}>

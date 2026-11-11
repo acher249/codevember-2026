@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three/webgpu";
 import { dot, float, length, max, mix, modelWorldMatrix, normalize, normalLocal, positionWorld, sign, refract, step, texture, uniform, vec2, vec4 } from "three/tsl";
+import { useQuality } from "../shared/engine/quality";
 import { lightIsStill, sun, through } from "./light";
 import suzanneData from "./suzanne.json";
 
@@ -75,14 +76,17 @@ function smoothSplit(source: THREE.BufferGeometry) {
 // it bends; from how thick the glass is there it guesses how far it travels before meeting the far side, reads the far
 // map there for the surface it leaves by, and bends again on the way out. One crossing, not every internal bounce, but
 // enough for the light a solid piece of glass throws.
+// Half as fine on a phone, where four of these at full size cost more than they show.
 const SIZE = 1024;
+const SIZE_LOW = 512;
 // How much of the table, across, the sun's view takes in.
 const VIEW = 3.4;
 const DEPTH = 8;
 
 export function useSunView(meshes: { current: (THREE.Mesh | null)[] }, count: number) {
+  const size = useQuality().tier === "low" ? SIZE_LOW : SIZE;
   const view = useMemo(() => {
-    const target = () => new THREE.RenderTarget(SIZE, SIZE, { type: THREE.HalfFloatType });
+    const target = () => new THREE.RenderTarget(size, size, { type: THREE.HalfFloatType });
     const front = target();
     const back = target();
     const camera = new THREE.OrthographicCamera(-VIEW / 2, VIEW / 2, VIEW / 2, -VIEW / 2, 0.5, 30);
@@ -109,7 +113,7 @@ export function useSunView(meshes: { current: (THREE.Mesh | null)[] }, count: nu
       return pair;
     });
     return { front, back, camera, projection, near, far, scenes, proxies, clear: new THREE.Color() as THREE.Color & { a: number } };
-  }, [count]);
+  }, [count, size]);
 
   useEffect(
     () => () => {

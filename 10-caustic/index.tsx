@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { orbitPoint } from "../shared/engine/controls";
 import { focusBlur, focusDistance } from "../shared/engine/Post";
 import { useSetting } from "../shared/engine/settings";
+import { useQuality } from "../shared/engine/quality";
 import { useMusic } from "../shared/engine/sound";
 import { StudioEnvironment } from "../shared/engine/studio";
 import type { DayDefinition } from "../shared/engine/types";
@@ -42,8 +43,11 @@ function Scene() {
   // stalls the page.
   const [shown, setShown] = useState(study);
   // Every other study is built too while the page first loads, out of sight behind the loader, so that its shaders are
-  // ready and switching to it later is quick. Each is put away once it has drawn without stalling.
-  const [warming, setWarming] = useState(() => STUDIES.map((s) => s.value).filter((value) => value !== study));
+  // ready and switching to it later is quick. Each is put away once it has drawn without stalling. Not Suzanne, whose
+  // light needs maps of her drawn from the sun and is the heaviest to build: she is built when chosen. And not on a
+  // phone at all: there several sets of glass and their light at once are more than it can hold.
+  const { tier } = useQuality();
+  const [warming, setWarming] = useState(() => (tier === "low" ? [] : STUDIES.map((s) => s.value).filter((value) => value !== study && value !== "monkeys")));
   const warmed = (value: string) => setWarming((list) => list.filter((item) => item !== value));
   useEffect(() => {
     if (study === shown) return;

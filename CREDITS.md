@@ -39,6 +39,12 @@ From [Poly Haven](https://polyhaven.com):
 
 From [ambientCG](https://ambientcg.com): [Moss 003](https://ambientcg.com/view?id=Moss003).
 
+The rusted post and the beach in Rust are my own: the post captured with [Polycam](https://poly.cam), the beach made from my own photograph.
+
+## Splats
+
+Rust is drawn as 3D Gaussian splats, after Kerbl, Kopanas, Leimkühler and Drettakis, *3D Gaussian Splatting for Real-Time Radiance Field Rendering* (SIGGRAPH 2023). They are stored as [SPZ](https://github.com/nianticlabs/spz), Niantic's compressed splat format (MIT), and loaded and drawn by three.js's own SPZLoader and GaussianSplat.
+
 ## Techniques
 
 Where these appear, the code says so too.
@@ -64,7 +70,7 @@ The constellation figures in Orrery come from [d3-celestial](https://github.com/
 
 ## Ocean
 
-The waves in Hollow are ported to WebGPU from [Ultra Water](https://github.com/Humpalumps/Ultra-Water) by [Humpalumps](https://github.com/Humpalumps), under the MIT license, included in full at [07-hollow/ultra-water-LICENSE.txt](07-hollow/ultra-water-LICENSE.txt). Thank you for sharing it.
+The waves in Hollow, and the sea in Rust, are ported to WebGPU from [Ultra Water](https://github.com/Humpalumps/Ultra-Water) by [Humpalumps](https://github.com/Humpalumps), under the MIT license, included in full at [07-hollow/ultra-water-LICENSE.txt](07-hollow/ultra-water-LICENSE.txt). Thank you for sharing it.
 
 The method behind it: Jerry Tessendorf, *Simulating Ocean Water* (2001), the JONSWAP wave spectrum, from Hasselmann et al. (1973), and the Stockham FFT. The peach's fine surface detail uses bump mapping after Morten Mikkelsen, *Bump Mapping Unparametrized Surfaces on the GPU* (2010).
 

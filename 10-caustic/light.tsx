@@ -207,8 +207,17 @@ export function Caustics({
   return null;
 }
 
+// The map's detail on each tier. Three of them at full size on a phone is most of its memory and much of its time.
+const MAP_SIZES = { low: 768, medium: 1280, high: 2048 };
+
 // Draws every scene's light into the map, before the frame.
 export function CausticPass() {
+  const { tier } = useQuality();
+  useEffect(() => {
+    const size = MAP_SIZES[tier];
+    [causticTarget, halfSoft, softTarget].forEach((target) => target.setSize(size, size));
+    stir();
+  }, [tier]);
   const camera = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 200), []);
   const clear = useMemo(() => new THREE.Color() as THREE.Color & { a: number }, []);
   useFrame(({ gl }) => {
