@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type RefObject } from "react";
 import { dayHref, days, promptDayFor, type CodevemberDay } from "../days";
-import type { QualityChoice } from "../engine/quality";
+import { narrowScreen, type QualityChoice } from "../engine/quality";
 import type { SettingsStore } from "../engine/settings";
 import type { OverviewSection, QualityTier, Setting } from "../engine/types";
 import { resetPrompt, usePromptDone } from "../engine/prompt";
@@ -104,12 +104,27 @@ function FlyKeys() {
 
 function Control({ name, setting, store }: { name: string; setting: Setting; store: SettingsStore }) {
   const value = useSyncExternalStore(store.subscribe, () => store.get(name));
+  // A slider ticks like Caustic's compass as it moves: a click for every notch that passes, a whole step on a stepped
+  // slider and a twentieth of the way on a smooth one, and never more than one every 30 ms.
+  const ratchet = useRef({ notch: NaN, at: 0 });
 
   if (setting.type === "action") {
     return (
       <button type="button" className="cv-action" onClick={() => store.trigger(name)}>
         {setting.label}
       </button>
+    );
+  }
+
+  if (setting.type === "toggle" && setting.sides) {
+    // Two named states either side of the switch, the chosen one lit.
+    const on = value as boolean;
+    return (
+      <label className="cv-control cv-control-sides" aria-label={setting.label}>
+        <span className={on ? "" : "cv-side-on"}>{setting.sides[0]}</span>
+        <input className="cv-switch" type="checkbox" role="switch" checked={on} onChange={(event) => store.set(name, event.target.checked)} />
+        <span className={on ? "cv-side-on" : ""}>{setting.sides[1]}</span>
+      </label>
     );
   }
 
@@ -151,8 +166,9 @@ function Control({ name, setting, store }: { name: string; setting: Setting; sto
     );
   }
 
-  const number = value as number;
-  const fill = ((number - setting.min) / (setting.max - setting.min)) * 100;
+  const max = setting.phoneMax !== undefined && narrowScreen() ? setting.phoneMax : setting.max;
+  const number = Math.min(value as number, max);
+  const fill = ((number - setting.min) / (max - setting.min)) * 100;
   return (
     <label className="cv-control">
       <span className="cv-control-label">
@@ -164,10 +180,22 @@ function Control({ name, setting, store }: { name: string; setting: Setting; sto
         className="cv-range"
         style={{ "--fill": `${fill}%` } as React.CSSProperties}
         min={setting.min}
-        max={setting.max}
+        max={max}
         step={setting.step ?? 0.01}
         value={number}
-        onChange={(event) => store.set(name, Number(event.target.value))}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          const span = setting.step && setting.step >= 1 ? setting.step : (max - setting.min) / 20;
+          const notch = Math.round((next - setting.min) / span);
+          const now = performance.now();
+          const last = Number.isNaN(ratchet.current.notch) ? Math.round((number - setting.min) / span) : ratchet.current.notch;
+          if (notch !== last && now - ratchet.current.at > 30) {
+            sound.play("click", { gain: 0.38, pitch: 0.9 + Math.random() * 0.25 });
+            ratchet.current.at = now;
+          }
+          ratchet.current.notch = notch;
+          store.set(name, next);
+        }}
       />
     </label>
   );
@@ -178,6 +206,25 @@ function PhonePill({ name, setting, store }: { name: string; setting: Setting; s
   if (setting.type === "action") {
     return (
       <button type="button" className="cv-pill" onClick={() => store.trigger(name)}>
+        {setting.label}
+      </button>
+    );
+  }
+  if (setting.type === "toggle") {
+    // On a phone a pair of pills, one for each side; or one pill that lights while it is on.
+    const on = value as boolean;
+    if (setting.sides)
+      return (
+        <>
+          {setting.sides.map((label, i) => (
+            <button key={label} type="button" className={`cv-pill ${on === (i === 1) ? "cv-pill-on" : ""}`} aria-pressed={on === (i === 1)} onClick={() => store.set(name, i === 1)}>
+              {label}
+            </button>
+          ))}
+        </>
+      );
+    return (
+      <button type="button" className={`cv-pill ${on ? "cv-pill-on" : ""}`} aria-pressed={on} onClick={() => store.set(name, !on)}>
         {setting.label}
       </button>
     );

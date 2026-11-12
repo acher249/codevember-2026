@@ -65,6 +65,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 11: <a href="11-rust">Rust</a></b><br>
       <a href="11-rust">Code</a> · <a href="https://adamwebsite.com/codevember/11-rust/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="12-feather"><img src="videos/12-feather.gif" alt="Feather" width="260"></a><br>
+      <b>Day 12: <a href="12-feather">Feather</a></b><br>
+      <a href="12-feather">Code</a> · <a href="https://adamwebsite.com/codevember/12-feather/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -95,6 +100,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 09 | [Membrane](09-membrane) | A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off. |
 | 10 | [Caustic](10-caustic) | Coloured glass in low sun, its light bent into bright colours on the table. |
 | 11 | [Rust](11-rust) | A rusted fence post, scanned from the real thing. |
+| 12 | [Feather](12-feather) | A pair of bird's wings built from the bone out, every feather on the bone it grows from. |
 
 ## Controls
 

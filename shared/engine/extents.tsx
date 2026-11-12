@@ -13,8 +13,15 @@ const FLOOR_ZONE = 0.8;
 const FLOOR_NEAREST = 0.2;
 const WALL_NEAREST = 0.35;
 
+// How far an endless world has been carried back under the camera, in all. A shader that patterns things by where they
+// lie adds this to the world position, so the pattern does not jump when the world does.
+export const worldOffset = uniform(new THREE.Vector3());
+// Told whenever an endless world is carried back, with how far everything moved. Anything that keeps world positions of its
+// own moves them the same way.
+export const worldShifted = new Set<(shift: THREE.Vector3) => void>();
+
 // The edge of a day's world: a sphere the camera eases to a stop inside, and which only shows itself close up.
-export function Extents({ centre, radius, floor, color = "#ffffff" }: ExtentsShape) {
+export function Extents({ centre, radius, floor, color = "#ffffff", endless }: ExtentsShape) {
   const camera = useThree((three) => three.camera);
   const middle = useMemo(() => new THREE.Vector3(...centre), [centre]);
   const reveal = Math.min(9, radius * 0.36);
@@ -54,7 +61,14 @@ export function Extents({ centre, radius, floor, color = "#ffffff" }: ExtentsSha
   );
 
   const state = useRef({ last: new THREE.Vector3(Infinity, 0, 0), lastPoint: new THREE.Vector3(), speed: 0, floorSpeed: 0, frames: 0 });
-  const scratch = useMemo(() => ({ moved: new THREE.Vector3(), out: new THREE.Vector3(), push: new THREE.Vector3() }), []);
+  const scratch = useMemo(() => ({ moved: new THREE.Vector3(), out: new THREE.Vector3(), push: new THREE.Vector3(), shift: new THREE.Vector3() }), []);
+
+  useEffect(() => {
+    if (!endless) return;
+    return () => {
+      worldOffset.value.set(0, 0, 0);
+    };
+  }, [endless]);
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 1 / 20);
@@ -77,12 +91,22 @@ export function Extents({ centre, radius, floor, color = "#ffffff" }: ExtentsSha
     out.divideScalar(fromMiddle);
     const room = radius - fromMiddle;
     const heading = moved.dot(out);
-    if (heading > 0) {
-      const left = Math.max(0, Math.min(1, (room - WALL_NEAREST) / zone));
-      push.addScaledVector(out, -heading * (1 - left * left * (3 - 2 * left)));
+    if (endless) {
+      // Only a lid: whatever is heading up slows to a stop under it.
+      const below = endless.ceiling - camera.position.y;
+      if (moved.y > 0) {
+        const left = Math.max(0, Math.min(1, (below - WALL_NEAREST) / zone));
+        push.y -= moved.y * (1 - left * left * (3 - 2 * left));
+      }
+      if (below < 0) push.y += below * (1 - Math.exp(-delta * 6));
+    } else {
+      if (heading > 0) {
+        const left = Math.max(0, Math.min(1, (room - WALL_NEAREST) / zone));
+        push.addScaledVector(out, -heading * (1 - left * left * (3 - 2 * left)));
+      }
+      s.speed += (Math.min(radius, Math.max(0, WALL_NEAREST - room) * 3) - s.speed) * (1 - Math.exp(-delta * 6));
+      push.addScaledVector(out, -s.speed * delta);
     }
-    s.speed += (Math.min(radius, Math.max(0, WALL_NEAREST - room) * 3) - s.speed) * (1 - Math.exp(-delta * 6));
-    push.addScaledVector(out, -s.speed * delta);
 
     if (floor !== undefined) {
       const clear = camera.position.y - floor;
@@ -96,13 +120,30 @@ export function Extents({ centre, radius, floor, color = "#ffffff" }: ExtentsSha
 
     camera.position.add(push);
     if (point && flying) point.add(push);
+
+    if (endless) {
+      // Past a period out, everything is carried back by whole periods, which looks exactly the same.
+      const { period } = endless;
+      const { shift } = scratch;
+      const back = (value: number) => (Math.abs(value) > period ? -Math.round(value / period) * period : 0);
+      shift.set(back(camera.position.x), 0, back(camera.position.z));
+      if (shift.x || shift.z) {
+        camera.position.add(shift);
+        camera.updateMatrixWorld();
+        point?.add(shift);
+        worldOffset.value.sub(shift);
+        worldShifted.forEach((listener) => listener(shift));
+      }
+    }
+
     s.last.copy(camera.position);
     if (point) s.lastPoint.copy(point);
 
     // Shown for its first frames so that its shader is ready before it is needed, then only when it is close.
     s.frames += 1;
-    mesh.visible = s.frames < 4 || room < reveal;
+    mesh.visible = !endless && (s.frames < 4 || room < reveal);
   });
 
+  if (endless) return null;
   return <primitive object={mesh} />;
 }

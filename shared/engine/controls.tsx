@@ -10,6 +10,8 @@ import type { CameraLimits } from "./types";
 // a grabbable only answers "did this ray hit you" and follows the point it is given.
 // The point the camera orbits. Anything that pushes the camera has to carry this with it, or the two drift apart.
 export const orbitPoint: { current: THREE.Vector3 | null } = { current: null };
+// Set while something else steers the camera, such as walking. The rig then lets go of it: no orbit, no flying, no zoom.
+export const cameraTaken = { current: false };
 
 type Grabbable = {
   pick: (ray: THREE.Ray) => { distance: number; point: THREE.Vector3 } | null;
@@ -150,7 +152,8 @@ export function CameraRig({ position, target, fov = 36, limits, registry }: RigP
     hovered: null as Grabbable | null,
     // Whether the user is turning the view by hand right now.
     turning: false,
-    pushed: 0
+    pushed: 0,
+    taken: false
   });
 
   useEffect(() => {
@@ -325,6 +328,16 @@ export function CameraRig({ position, target, fov = 36, limits, registry }: RigP
     const rig = state.current;
     const delta = Math.min(rawDelta, 1 / 20);
     const { forward, right, wish } = scratch;
+
+    if (cameraTaken.current !== rig.taken) {
+      rig.taken = cameraTaken.current;
+      controls.enabled = !rig.taken && !rig.held;
+      rig.velocity.set(0, 0, 0);
+      rig.zoom = 0;
+      // Handed back, the orbit starts again from wherever the camera was left.
+      if (!rig.taken) controls.update();
+    }
+    if (rig.taken) return;
 
     camera.getWorldDirection(forward);
     right.crossVectors(forward, camera.up).normalize();

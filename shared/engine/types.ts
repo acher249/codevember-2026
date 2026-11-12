@@ -5,6 +5,8 @@ export type RangeSetting = {
   label: string;
   min: number;
   max: number;
+  // A lower ceiling on a narrow screen, for settings that cost more than a phone can give.
+  phoneMax?: number;
   step?: number;
   value: number;
 };
@@ -13,6 +15,8 @@ export type ToggleSetting = {
   type: "toggle";
   label: string;
   value: boolean;
+  // A choice between two named states, shown either side of the switch instead of the label: off, then on.
+  sides?: [string, string];
 };
 
 export type ChoiceSetting = {
@@ -59,8 +63,10 @@ export type Look = {
   grain: number;
 };
 
-// How far a day's camera may go: a sphere, and optionally a level it stays above.
-export type Extents = { centre: [number, number, number]; radius: number; floor?: number; color?: string };
+// How far a day's camera may go: a sphere, and optionally a level it stays above. `endless` is for a world that repeats
+// every `period` units across the ground: there is no sphere then, only the floor and a `ceiling`, and the camera is carried
+// back a whole period whenever it strays more than one from the middle, which keeps numbers small however far it goes.
+export type Extents = { centre: [number, number, number]; radius: number; floor?: number; color?: string; endless?: { period: number; ceiling: number } };
 
 // air is how thick the air gets, up to a limit. By default it thickens from the lens at a fixed rate. airRate changes that rate,
 // and airBehindFocus starts it that far in front of the focus, so that depth reads the same at any zoom. sharpSky leaves

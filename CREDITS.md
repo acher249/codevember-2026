@@ -57,6 +57,18 @@ Where these appear, the code says so too.
 - **mulberry32** random numbers: Tommy Ettinger
 - **Lehmer random numbers**, with constants from Park and Miller (1988)
 - **The `fract(sin(...) * 43758.5453)` hash**, a long-standing shader one-liner whose author isn't known for certain
+- **Vortex lattice and Biot–Savart induction**, for Feather's airflow: the standard method of aerodynamics texts such as Katz and Plotkin, *Low-Speed Aerodynamics* (2001)
+- **Perlin–Worley noise, Beer–Lambert and the Henyey–Greenstein phase function**, for Feather's clouds: after Schneider and Vos, "The Real-Time Volumetric Cloudscapes of Horizon Zero Dawn" (SIGGRAPH 2015)
+
+## Bird wings
+
+The research Feather is built on, cited in its technical overview.
+
+- Wing bone proportions: Hayward et al., glaucous-winged gull wing bones (*Journal of Morphology*, 2009)
+- Elbow and wrist linkage: Vazquez (*Zoomorphology*, 1994)
+- Feather tracts: Proctor and Lynch, *Manual of Ornithology* (1993)
+- The wingbeat: Tobalske and Dial (*Journal of Experimental Biology*, 1996)
+- Gull wingtip patterns: [gull-research.org](https://www.gull-research.org/)
 
 ## Caustics
 

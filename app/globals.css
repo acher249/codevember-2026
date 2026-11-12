@@ -474,6 +474,31 @@ body {
   cursor: pointer;
 }
 
+/* A switch between two named states, centred, the chosen side lit. */
+.cv-control-sides {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.cv-control-sides span {
+  min-width: 48px;
+  color: var(--cv-dim);
+  font-size: 13px;
+  transition: color 0.25s ease;
+}
+
+.cv-control-sides span:first-child {
+  text-align: right;
+}
+
+.cv-control-sides .cv-side-on {
+  color: var(--cv-ink);
+}
+
 /* A sliding switch, in place of the browser's checkbox. */
 .cv-switch {
   appearance: none;

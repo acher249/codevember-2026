@@ -28,7 +28,9 @@ type ShotName =
   | "creak"
   | "click"
   | "peel"
-  | "brush";
+  | "brush"
+  | "step"
+  | "hoot";
 
 // size is roughly 0 to 1, how big the thing making the sound is. pan is -1 to 1. variant picks one of a family, such as
 // the kinds of peel. gap is the fewest seconds since the last of the same name, for sounds asked for every frame.
@@ -482,12 +484,76 @@ class SoundEngine {
         this.burst(at, "brown", "lowpass", 900 * pitch, 0.6, 0.04, 0.32, 0.4 * gain, out, 500 * pitch);
         this.burst(at, "pink", "bandpass", 1400 * pitch, 0.6, 0.05, 0.2, 0.05 * gain, out);
         break;
+      case "step":
+        this.step(options.variant ?? "gravel", at, pitch, gain, out);
+        break;
+      case "hoot":
+        // An owl, far off: a soft low note, a breath, then a longer one that falls away.
+        this.note(at, "sine", 390 * pitch, 370 * pitch, 0.06, 0.22, 0.16 * gain, out, 900);
+        this.note(at + 0.42, "sine", 410 * pitch, 350 * pitch, 0.08, 0.55, 0.2 * gain, out, 900);
+        this.burst(at + 0.42, "pink", "bandpass", 400 * pitch, 3, 0.08, 0.4, 0.02 * gain, out);
+        break;
       case "creak": {
         const grains = 6 + Math.floor(r() * 7);
         const f = 300 * pitch * (0.8 + r() * 0.5);
         for (let i = 0; i < grains; i++) this.note(at + (i / grains) * 0.34, "sawtooth", f * (1 + i * 0.015), f * (1 + i * 0.015), 0.002, 0.018, 0.08 * gain, out, 1500);
         break;
       }
+    }
+  }
+
+  // A foot coming down on one kind of ground. The heel lands first and the rest of the foot rolls on after it, so
+  // every kind is a soft low strike and then what the ground itself does under the weight, spread over a tenth of a second.
+  private step(kind: string, at: number, pitch: number, gain: number, out: AudioNode) {
+    const r = Math.random;
+    const roll = at + 0.05 + r() * 0.03;
+    switch (kind) {
+      case "grass":
+        // Blades pressed flat: a hush that brushes down, a little dull thud under it, a few stalks snapping.
+        this.burst(at, "brown", "lowpass", 260 * pitch, 0.6, 0.006, 0.07, 0.22 * gain, out);
+        this.burst(at + 0.005, "pink", "bandpass", 2600 * pitch, 0.7, 0.025, 0.13, 0.12 * gain, out, 1500 * pitch);
+        this.burst(roll, "pink", "bandpass", 3400 * pitch, 0.8, 0.02, 0.1, 0.07 * gain, out, 2000 * pitch);
+        for (let i = 0; i < 3; i++) this.burst(at + 0.02 + r() * 0.1, "white", "highpass", (5000 + r() * 3000) * pitch, 0.7, 0.001, 0.006, 0.025 * gain, out);
+        break;
+      case "leaves":
+        // Dry leaves: dozens of tiny crackles as they crush, over a papery rustle.
+        this.burst(at, "brown", "lowpass", 300 * pitch, 0.6, 0.005, 0.06, 0.2 * gain, out);
+        this.burst(at + 0.01, "pink", "bandpass", 3000 * pitch, 0.6, 0.03, 0.18, 0.1 * gain, out, 1800 * pitch);
+        for (let i = 0; i < 16; i++) this.burst(at + r() * 0.2, "white", "bandpass", (2500 + r() * 5500) * pitch, 2.5, 0.0005, 0.004 + r() * 0.012, (0.03 + r() * 0.07) * gain, out);
+        break;
+      case "stone":
+        // Hard paving: the click of a heel, a short knock in the slab, then the sole scuffing down.
+        this.burst(at, "white", "bandpass", 2800 * pitch, 3, 0.0008, 0.018, 0.22 * gain, out);
+        this.note(at, "sine", 140 * pitch, 85 * pitch, 0.001, 0.05, 0.25 * gain, out);
+        this.burst(roll, "pink", "bandpass", 1900 * pitch, 1.4, 0.004, 0.05, 0.09 * gain, out);
+        this.burst(roll + 0.01, "white", "highpass", 4200 * pitch, 0.7, 0.002, 0.03, 0.03 * gain, out);
+        break;
+      case "earth":
+        // Soft packed earth: a dull, round thud with almost nothing high in it, and a faint crumble.
+        this.burst(at, "brown", "lowpass", 220 * pitch, 0.8, 0.008, 0.14, 0.5 * gain, out);
+        this.note(at, "sine", 95 * pitch, 60 * pitch, 0.004, 0.1, 0.22 * gain, out);
+        this.burst(roll, "brown", "lowpass", 380 * pitch, 0.7, 0.01, 0.08, 0.2 * gain, out);
+        for (let i = 0; i < 4; i++) this.burst(at + 0.03 + r() * 0.08, "pink", "bandpass", (900 + r() * 900) * pitch, 2, 0.002, 0.015, 0.03 * gain, out);
+        break;
+      case "wood":
+        // Boards over a hollow: a knock that rings for a moment in the space beneath, and a faint creak of the plank.
+        this.note(at, "triangle", 190 * pitch, 160 * pitch, 0.001, 0.12, 0.3 * gain, out, 1100);
+        this.note(at, "sine", 410 * pitch, 380 * pitch, 0.001, 0.05, 0.1 * gain, out);
+        this.burst(at, "pink", "bandpass", 1300 * pitch, 2, 0.001, 0.025, 0.12 * gain, out);
+        this.note(roll, "triangle", 170 * pitch, 150 * pitch, 0.002, 0.08, 0.14 * gain, out, 900);
+        if (r() < 0.3) this.note(roll + 0.02, "sawtooth", 520 * pitch, 560 * pitch, 0.01, 0.06, 0.012 * gain, out, 1800);
+        break;
+      case "snow":
+        // Fresh snow: the squeak and crunch of crystals packing down, low and close.
+        this.burst(at, "brown", "lowpass", 300 * pitch, 0.6, 0.01, 0.08, 0.15 * gain, out);
+        for (let i = 0; i < 14; i++) this.burst(at + 0.01 + (i / 14) * 0.16 + r() * 0.01, "pink", "bandpass", (700 + r() * 1300) * pitch, 3, 0.001, 0.012 + r() * 0.01, (0.05 + r() * 0.05) * gain, out);
+        this.burst(at + 0.02, "white", "bandpass", 1500 * pitch, 1.2, 0.03, 0.12, 0.05 * gain, out);
+        break;
+      default:
+        // Gravel: a soft heel, then small stones grinding and shifting under the sole as it rolls on.
+        this.burst(at, "brown", "lowpass", 420 * pitch, 0.7, 0.004, 0.09, 0.4 * gain, out);
+        for (let i = 0; i < 9; i++) this.burst(at + 0.01 + r() * 0.07, "white", "bandpass", (1700 + r() * 3000) * pitch, 1.8, 0.001, 0.008 + r() * 0.02, (0.04 + r() * 0.07) * gain, out);
+        for (let i = 0; i < 5; i++) this.burst(roll + r() * 0.06, "white", "bandpass", (2500 + r() * 2500) * pitch, 2.2, 0.001, 0.006 + r() * 0.012, (0.03 + r() * 0.04) * gain, out);
     }
   }
 

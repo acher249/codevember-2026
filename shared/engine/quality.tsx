@@ -90,3 +90,6 @@ export function AdaptiveQuality({
 
   return null;
 }
+
+// A phone-sized screen: the same test Stage uses for a phone's framing.
+export const narrowScreen = () => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;

@@ -171,7 +171,11 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
           giPass.aoIntensity.value = next.ao;
         });
         const diffuse = scenePass.getTextureNode("diffuseColor");
-        color = vec4(add(beauty.rgb.mul(giPass.a), diffuse.rgb.mul(giPass.rgb)), beauty.a);
+        // Since r187 the pass keeps occlusion and bounce light in separate textures: its own output is the occlusion
+        // alone, in red, and the bounce light is a texture of its own.
+        const occlusion = giPass.getAONode().r;
+        const bounceLight = giPass.getGINode().rgb;
+        color = vec4(add(beauty.rgb.mul(occlusion), diffuse.rgb.mul(bounceLight)), beauty.a);
       } else {
         const aoPass: any = ao(depth, decodedNormal as any, camera);
         aoPass.resolutionScale = 0.5;
