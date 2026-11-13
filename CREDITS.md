@@ -59,6 +59,8 @@ Where these appear, the code says so too.
 - **The `fract(sin(...) * 43758.5453)` hash**, a long-standing shader one-liner whose author isn't known for certain
 - **Vortex lattice and Biot–Savart induction**, for Feather's airflow: the standard method of aerodynamics texts such as Katz and Plotkin, *Low-Speed Aerodynamics* (2001)
 - **Perlin–Worley noise, Beer–Lambert and the Henyey–Greenstein phase function**, for Feather's clouds: after Schneider and Vos, "The Real-Time Volumetric Cloudscapes of Horizon Zero Dawn" (SIGGRAPH 2015)
+- **Hash without Sine**, for Labyrinth's noise: [Dave Hoskins](https://www.shadertoy.com/view/4djSRW)
+- **Bump mapping without tangents**, for the veins in Labyrinth's leaves: Morten Mikkelsen, "Bump Mapping Unparametrized Surfaces on the GPU" (2010)
 
 ## Bird wings
 

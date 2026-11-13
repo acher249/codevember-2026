@@ -30,7 +30,15 @@ type ShotName =
   | "peel"
   | "brush"
   | "step"
-  | "hoot";
+  | "hoot"
+  | "blip"
+  | "pluck"
+  | "snap"
+  | "coin"
+  | "chime"
+  | "fanfare"
+  | "bunny"
+  | "ping";
 
 // size is roughly 0 to 1, how big the thing making the sound is. pan is -1 to 1. variant picks one of a family, such as
 // the kinds of peel. gap is the fewest seconds since the last of the same name, for sounds asked for every frame.
@@ -199,6 +207,41 @@ class SoundEngine {
       .catch(() => {
         // Refused or interrupted. The next press tries again.
       });
+  }
+
+  // A recorded sound, fetched and decoded once, then played whole whenever asked, at the master level. Quietly nothing if
+  // the file is missing or audio has not been woken yet.
+  private samples = new Map<string, Promise<AudioBuffer | null>>();
+  private decode(url: string) {
+    let pending = this.samples.get(url);
+    if (!pending) {
+      pending = fetch(url)
+        .then((answer) => (answer.ok ? answer.arrayBuffer() : Promise.reject(new Error(String(answer.status)))))
+        .then((data) => (this.context ?? new AudioContext()).decodeAudioData(data))
+        .catch(() => null);
+      this.samples.set(url, pending);
+    }
+    return pending;
+  }
+
+  // Fetches a recorded sound ahead of its first use, so it plays on time.
+  preload(url: string) {
+    void this.decode(url);
+  }
+
+  sample(url: string, gain = 1) {
+    void this.decode(url).then((buffer) => {
+      const context = this.context;
+      if (!buffer || !context || context.state !== "running" || this.muted || !this.master) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      const level = context.createGain();
+      level.gain.value = gain;
+      source.connect(level);
+      level.connect(this.master);
+      source.start();
+      this.count(source);
+    });
   }
 
   // Asks for a day's track, and returns what stops it again.
@@ -484,6 +527,107 @@ class SoundEngine {
         this.burst(at, "brown", "lowpass", 900 * pitch, 0.6, 0.04, 0.32, 0.4 * gain, out, 500 * pitch);
         this.burst(at, "pink", "bandpass", 1400 * pitch, 0.6, 0.05, 0.2, 0.05 * gain, out);
         break;
+      case "pluck": {
+        // A taut thread let go: a fine twang that rings and sags a little in pitch, an octave and a fifth over it dying
+        // sooner, and the tiny tick of the release. size is how long it rings.
+        const base = 330 * pitch;
+        const ring = 0.25 + size * 0.9;
+        this.note(at, "sine", base, base * 0.985, 0.002, ring, 0.22 * gain, out);
+        this.note(at, "sine", base * 2.003, base * 1.97, 0.002, ring * 0.55, 0.09 * gain, out);
+        this.note(at, "triangle", base * 3.01, base * 2.96, 0.001, ring * 0.3, 0.04 * gain, out, 6000);
+        this.burst(at, "white", "bandpass", 5200 * pitch, 2.5, 0.0005, 0.006, 0.08 * gain, out);
+        break;
+      }
+      case "snap":
+        // Silk giving way: a dry crack and a thin whip of a note falling away.
+        this.burst(at, "white", "highpass", 3800 * pitch, 0.8, 0.0004, 0.012, 0.35 * gain, out);
+        this.note(at, "sine", 2400 * pitch, 520 * pitch, 0.001, 0.09, 0.1 * gain, out);
+        this.note(at + 0.004, "triangle", 900 * pitch, 260 * pitch, 0.001, 0.07, 0.06 * gain, out, 4000);
+        break;
+      case "blip": {
+        // Data going by: two or three quick square tones stepping up or down, filtered soft, like a far-off terminal.
+        const base = (700 + r() * 1400) * pitch;
+        const notes = 2 + Math.floor(r() * 2);
+        const up = r() < 0.5 ? 1.5 : 0.67;
+        for (let i = 0; i < notes; i++) this.note(at + i * 0.055, "square", base * up ** i, base * up ** i, 0.002, 0.04, 0.05 * gain, out, 3200);
+        break;
+      }
+      case "coin": {
+        // A coin picked up: a bright, bell-like ding and a fourth above it, a touch of square so it sparkles, a soft
+        // thump of weight under it, a crisp tick on top and a quiet echo of the high note ringing on.
+        const base = 988 * pitch;
+        const high = base * 1.335;
+        this.note(at, "sine", 140, 90, 0.002, 0.06, 0.14 * gain, out);
+        this.burst(at, "white", "highpass", 7500, 0.7, 0.0005, 0.02, 0.07 * gain, out);
+        this.note(at, "square", base, base, 0.001, 0.06, 0.06 * gain, out, 6000);
+        this.note(at, "sine", base, base, 0.001, 0.09, 0.26 * gain, out);
+        this.note(at + 0.065, "square", high, high, 0.001, 0.22, 0.06 * gain, out, 6000);
+        this.note(at + 0.065, "sine", high, high, 0.001, 0.5, 0.32 * gain, out);
+        this.note(at + 0.065, "sine", high * 2, high * 2, 0.001, 0.25, 0.08 * gain, out);
+        this.note(at + 0.065, "sine", high * 2.76, high * 2.76, 0.001, 0.12, 0.04 * gain, out);
+        this.note(at + 0.2, "sine", high, high, 0.002, 0.35, 0.06 * gain, out);
+        break;
+      }
+      case "ping": {
+        // Every fifth coin: a clear glassy ping, up an octave and a fifth, with a shimmer of overtones that rings out.
+        const base = 1568 * pitch;
+        this.note(at, "sine", base, base, 0.001, 0.6, 0.24 * gain, out);
+        this.note(at, "sine", base * 2.756, base * 2.756, 0.001, 0.3, 0.06 * gain, out);
+        this.note(at + 0.08, "sine", base * 1.498, base * 1.498, 0.001, 0.8, 0.26 * gain, out);
+        this.note(at + 0.08, "triangle", base * 3, base * 3, 0.001, 0.35, 0.05 * gain, out, 9000);
+        this.note(at + 0.08, "sine", base * 1.502, base * 1.502, 0.001, 0.9, 0.08 * gain, out);
+        this.burst(at, "white", "highpass", 8000, 0.7, 0.0005, 0.03, 0.06 * gain, out);
+        break;
+      }
+      case "chime": {
+        // Every tenth coin: a quick run up a major chord, a swish under it and a scatter of sparkle as it lands.
+        const base = 1047 * pitch;
+        [1, 1.26, 1.498, 2].forEach((step, i) => {
+          this.note(at + i * 0.06, "triangle", base * step, base * step, 0.002, 0.28 + i * 0.12, 0.16 * gain, out, 7000);
+          this.note(at + i * 0.06, "sine", base * step, base * step, 0.002, 0.4 + i * 0.12, 0.12 * gain, out);
+          this.note(at + i * 0.06, "sine", base * step * 2, base * step * 2, 0.002, 0.15, 0.03 * gain, out);
+        });
+        this.burst(at, "pink", "bandpass", 900, 1.2, 0.12, 0.2, 0.06 * gain, out, 5000);
+        for (let i = 0; i < 8; i++) {
+          const f = (4200 + r() * 4200) * pitch;
+          this.note(at + 0.22 + r() * 0.4, "sine", f, f, 0.001, 0.08 + r() * 0.2, (0.02 + r() * 0.03) * gain, out);
+        }
+        break;
+      }
+      case "fanfare": {
+        // Every hundredth: a deep hit, a run up two octaves into a full, bright chord that swells and hangs, a rush of
+        // air rising under it and a long shower of sparkle.
+        const base = 523 * pitch;
+        this.note(at, "sine", 110, 42, 0.004, 0.9, 0.5 * gain, out);
+        this.burst(at, "brown", "lowpass", 600, 0.7, 0.003, 0.4, 0.4 * gain, out);
+        [1, 1.26, 1.498, 2, 2.52, 2.997].forEach((step, i) => this.note(at + i * 0.045, "triangle", base * step, base * step, 0.002, 0.22, 0.09 * gain, out, 6000));
+        const held = at + 0.29;
+        [0.5, 1, 1.26, 1.498, 2, 2.52].forEach((step) => {
+          this.note(held, "sawtooth", base * step * 0.997, base * step * 0.997, 0.03, 1.6, 0.04 * gain, out, 3200);
+          this.note(held, "sawtooth", base * step * 1.003, base * step * 1.003, 0.03, 1.6, 0.04 * gain, out, 3200);
+          this.note(held, "sine", base * step, base * step, 0.01, 1.9, 0.07 * gain, out);
+        });
+        this.burst(at, "pink", "bandpass", 500, 1, 0.3, 0.6, 0.1 * gain, out, 6000);
+        for (let i = 0; i < 26; i++) {
+          const f = (3800 + r() * 5600) * pitch;
+          this.note(held + Math.pow(r(), 1.4) * 1.4, "sine", f, f, 0.001, 0.08 + r() * 0.25, (0.02 + r() * 0.035) * gain, out);
+        }
+        break;
+      }
+      case "bunny": {
+        // A rabbit caught: a springy boing, a little squeak, and a quick cascade of coins tumbling up.
+        this.note(at, "sine", 220 * pitch, 880 * pitch, 0.004, 0.22, 0.32 * gain, out);
+        this.note(at, "triangle", 330 * pitch, 1320 * pitch, 0.004, 0.18, 0.08 * gain, out, 4000);
+        this.note(at + 0.16, "sine", 1700 * pitch, 2600 * pitch, 0.01, 0.09, 0.08 * gain, out);
+        this.note(at + 0.24, "sine", 2400 * pitch, 1900 * pitch, 0.01, 0.08, 0.06 * gain, out);
+        [1, 1.26, 1.498, 2, 2.52, 3].forEach((step, i) => {
+          const f = 988 * step * pitch;
+          this.note(at + 0.3 + i * 0.05, "square", f, f, 0.001, 0.08, 0.03 * gain, out, 5000);
+          this.note(at + 0.3 + i * 0.05, "sine", f, f, 0.001, 0.18 + i * 0.04, 0.1 * gain, out);
+        });
+        this.burst(at + 0.3, "pink", "bandpass", 1500, 1, 0.08, 0.3, 0.05 * gain, out, 6000);
+        break;
+      }
       case "step":
         this.step(options.variant ?? "gravel", at, pitch, gain, out);
         break;
@@ -542,6 +686,15 @@ class SoundEngine {
         this.burst(at, "pink", "bandpass", 1300 * pitch, 2, 0.001, 0.025, 0.12 * gain, out);
         this.note(roll, "triangle", 170 * pitch, 150 * pitch, 0.002, 0.08, 0.14 * gain, out, 900);
         if (r() < 0.3) this.note(roll + 0.02, "sawtooth", 520 * pitch, 560 * pitch, 0.01, 0.06, 0.012 * gain, out, 1800);
+        break;
+      case "grid":
+        // A lit glass panel over a hollow: a deep synthetic thump, a short metallic ring in the panel, and a little
+        // electric zap as the sole meets it.
+        this.note(at, "sine", 120 * pitch, 55 * pitch, 0.001, 0.09, 0.45 * gain, out);
+        this.burst(at, "white", "bandpass", 3200 * pitch, 4, 0.0006, 0.012, 0.2 * gain, out);
+        this.note(at, "triangle", 880 * pitch, 860 * pitch, 0.001, 0.14, 0.06 * gain, out, 4000);
+        this.note(at, "triangle", 1317 * pitch, 1290 * pitch, 0.001, 0.1, 0.035 * gain, out, 5000);
+        this.note(roll, "sawtooth", 2400 * pitch, 600 * pitch, 0.001, 0.045, 0.025 * gain, out, 3500);
         break;
       case "snow":
         // Fresh snow: the squeak and crunch of crystals packing down, low and close.

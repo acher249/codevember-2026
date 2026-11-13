@@ -174,6 +174,20 @@ body {
   z-index: 2;
   pointer-events: none;
   transition: opacity 0.3s ease;
+  /* A drag across the scene or a double-click on a control should never select the page's text. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cv-stage {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The technical overview is there to be read and copied. */
+.cv-hud .cv-overview-body {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .cv-hud-hidden {
@@ -1379,4 +1393,45 @@ a.cv-step:hover {
   right: 12px;
   font-size: 11px;
   color: var(--cv-accent);
+}
+
+.cv-frames {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.cv-frames canvas {
+  display: block;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Walking on a touch screen: a round button to jump, low on the right, clear of the compass. */
+.cv-jump {
+  position: fixed;
+  right: 16px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 30;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 18, 16, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f4efe6;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cv-jump:active {
+  background: rgba(255, 255, 255, 0.2);
 }

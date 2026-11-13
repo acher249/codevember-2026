@@ -149,7 +149,7 @@ function Metal() {
     const smin = Fn(([a, b, k]: any[]) => {
       const h = max(k.sub(abs(a.sub(b))), float(0)).div(k) as any;
       return min(a, b).sub(h.mul(h).mul(k).mul(0.25));
-    }).setLayout({ name: "meltBlend", type: "float", inputs: [{ name: "a", type: "float" }, { name: "b", type: "float" }, { name: "k", type: "float" }] }) as any;
+    }) as any;
 
     // Everything solid in one function. The lake is part of it, so a drop swells the surface as it lands.
     const map = Fn(([p]: any[]) => {
@@ -166,7 +166,7 @@ function Metal() {
         d.assign(smin(d, length(p.sub(blob.xyz)).sub(blob.w), u.blend));
       });
       return smin(d, p.y, u.blend.mul(0.75));
-    }).setLayout({ name: "meltMap", type: "float", inputs: [{ name: "p", type: "vec3" }] }) as any;
+    }) as any;
 
     const normalAt = Fn(([p]: any[]) => {
       const e = float(0.0016) as any;
@@ -175,7 +175,7 @@ function Metal() {
       const c = vec3(e.negate(), e, e.negate()) as any;
       const d = vec3(e, e, e) as any;
       return normalize(a.mul(map(p.add(a))).add(b.mul(map(p.add(b)))).add(c.mul(map(p.add(c)))).add(d.mul(map(p.add(d)))));
-    }).setLayout({ name: "meltNormal", type: "vec3", inputs: [{ name: "p", type: "vec3" }] }) as any;
+    }) as any;
 
     // The room, in HDR: a sky gradient, a big softbox overhead, two side strips, and a neon ring if the room has one.
     const room = Fn(([direction, lights]: any[]) => {
@@ -188,7 +188,7 @@ function Metal() {
       const stripes = smoothstep(0.86, 0.96, sin(direction.x.mul(9).add(direction.z.mul(6)))).mul(smoothstep(0.02, 0.2, y)).mul(u.strip) as any;
       const lit = u.key.mul(box.mul(7)).add(u.left.mul(leftStrip.mul(7))).add(u.right.mul(rightStrip.mul(6))).add(mix(u.left, u.right, direction.x.mul(0.5).add(0.5)).mul(halo.mul(7).add(stripes.mul(2.4)))) as any;
       return base.add(lit.mul(lights));
-    }).setLayout({ name: "meltRoom", type: "vec3", inputs: [{ name: "direction", type: "vec3" }, { name: "lights", type: "float" }] }) as any;
+    }) as any;
 
     const fromBound = Fn(([ro, rd]: any[]) => {
       const oc = ro.sub(centre) as any;
@@ -197,7 +197,7 @@ function Metal() {
       const h = b.mul(b).sub(c) as any;
       const root = sqrt(max(h, float(0))) as any;
       return vec3(b.negate().sub(root), b.negate().add(root), h);
-    }).setLayout({ name: "meltBound", type: "vec3", inputs: [{ name: "ro", type: "vec3" }, { name: "rd", type: "vec3" }] }) as any;
+    }) as any;
 
     const march = (name: string, steps: number) =>
       Fn(([ro, rd, near, far]: any[]) => {
@@ -215,7 +215,7 @@ function Metal() {
           });
         });
         return hit;
-      }).setLayout({ name, type: "float", inputs: [{ name: "ro", type: "vec3" }, { name: "rd", type: "vec3" }, { name: "near", type: "float" }, { name: "far", type: "float" }] }) as any;
+      }) as any;
     const marchPrimary = march("meltPrimary", primarySteps);
     const marchBounce = bounceSteps > 0 ? march("meltBounce", bounceSteps) : null;
 
@@ -235,7 +235,7 @@ function Metal() {
         slope.addAssign(offset.div(distance).mul(height));
       });
       return slope;
-    }).setLayout({ name: "meltSlope", type: "vec2", inputs: [{ name: "p", type: "vec3" }] }) as any;
+    }) as any;
 
     // How metal answers a view: Fresnel on a tint, or a thin film of oil whose colour runs with the angle.
     const metalAt = Fn(([ndv, p]: any[]) => {
@@ -244,7 +244,7 @@ function Metal() {
       const phase = ndv.mul(2.6).add(sin(p.x.mul(1.3).add(p.y.mul(1.9)).add(u.clock.mul(0.2))).mul(0.45)).add(sin(p.z.mul(1.7).sub(p.y)).mul(0.3)) as any;
       const film = vec3(cos(phase.mul(6.283)), cos(phase.add(0.33).mul(6.283)), cos(phase.add(0.67).mul(6.283))).mul(0.5).add(0.5) as any;
       return mix(tinted, film.mul(0.9).add(0.1).mul(mix(float(0.55), float(1), edge)), u.film);
-    }).setLayout({ name: "meltMetal", type: "vec3", inputs: [{ name: "ndv", type: "float" }, { name: "p", type: "vec3" }] }) as any;
+    }) as any;
 
     // What a reflected ray sees: other metal if it hits some, the room if not. The lake past the bound is a dim mirror.
     const traced = Fn(([ro, rd]: any[]) => {
@@ -266,14 +266,14 @@ function Metal() {
         });
       }
       return seen;
-    }).setLayout({ name: "meltTraced", type: "vec3", inputs: [{ name: "ro", type: "vec3" }, { name: "rd", type: "vec3" }] }) as any;
+    }) as any;
 
     const occlusion = Fn(([p, n]: any[]) => {
       const a = max(map(p.add(n.mul(0.12))).div(0.12), float(0)) as any;
       const b = max(map(p.add(n.mul(0.42))).div(0.42), float(0)) as any;
       const c = max(map(p.add(n.mul(1.1))).div(1.1), float(0)) as any;
       return clamp(a.mul(0.2).add(b.mul(0.35)).add(c.mul(0.45)), 0, 1);
-    }).setLayout({ name: "meltOcclusion", type: "float", inputs: [{ name: "p", type: "vec3" }, { name: "n", type: "vec3" }] }) as any;
+    }) as any;
 
     const look = new THREE.MeshStandardNodeMaterial({ side: THREE.BackSide, roughness: 1, metalness: 0 });
     look.colorNode = vec3(0) as any;

@@ -4,7 +4,10 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, type RefObject } from "react";
 import * as THREE from "three/webgpu";
 import {
+  Fn,
+  If,
   add,
+  convertToTexture,
   unpackRGBToNormal,
   diffuseColor,
   packNormalToRGB,
@@ -50,6 +53,8 @@ export const focusDistance = uniform(12);
 export const focusBlur = uniform(1);
 export const airTint = uniform(new THREE.Color("#d8c8b4"));
 export const airAmount = uniform(1);
+// How much the edges of the frame streak outward, as when running flat out; set by the walk.
+export const rushAmount = uniform(0);
 
 // Fine, fast things such as rain draw into their own pass, added after the temporal blend. Inside the scene pass
 // they would write their motion into the buffer that the blend trusts, and everything behind them would shimmer.
@@ -98,9 +103,11 @@ type PostProps = {
   hasHaze: boolean;
   // Screen-space bounce light. Without it the high tier falls back to plain ambient occlusion.
   bounce?: boolean;
+  halfBounce?: boolean;
   overlay?: boolean;
   depthOfField?: DepthOfField;
   sideBlur?: SideBlur;
+  rush?: boolean;
   // How far the colours split at the edge of the frame. Nothing on the low tier.
   chromatic?: number;
   phase: RefObject<RenderPhase>;
@@ -110,7 +117,7 @@ type PostProps = {
 //   high    SSGI (bounce + AO), haze, bloom, TRAA
 //   medium  GTAO, haze, bloom, TRAA
 //   low     bloom and FXAA, for phones and slow machines
-export function Post({ look, quality, hasHaze, bounce = true, overlay = false, depthOfField, sideBlur, chromatic, phase }: PostProps) {
+export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false, overlay = false, depthOfField, sideBlur, chromatic, rush = false, phase }: PostProps) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
@@ -166,6 +173,9 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
         giPass.sliceCount.value = 2;
         giPass.stepCount.value = 8;
         giPass.radius.value = 8;
+        // Traced at half size where a day asks: bounce light and occlusion are soft, and its temporal filter hides most of
+        // the difference.
+        if (halfBounce) giPass.resolutionScale = 0.5;
         tuners.push((next) => {
           giPass.giIntensity.value = next.gi;
           giPass.aoIntensity.value = next.ao;
@@ -205,8 +215,13 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
       hazeDepth = scenePass.getTextureNode("depth");
     }
 
+    // A texture already holding the frame as it stands, while it does, so that a pass reading the frame around each
+    // pixel can sample it straight off rather than first copying it out at full size.
+    let held: any = null;
     if (useTemporal) {
-      color = traa(color, scenePass.getTextureNode("depth"), scenePass.getTextureNode("velocity"), camera);
+      const temporal: any = traa(color, scenePass.getTextureNode("depth"), scenePass.getTextureNode("velocity"), camera);
+      color = temporal;
+      held = temporal.getTextureNode();
     }
 
     // Air between the lens and whatever it sees, thickening with distance up to a limit.
@@ -216,11 +231,38 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
       const through = depthOfField.airBehindFocus === undefined ? seen : seen.sub((focusDistance as any).sub(depthOfField.airBehindFocus)).max(0);
       const thick = float(1).sub(exp(through.mul(-(depthOfField.airRate ?? 0.022)))).mul(depthOfField.air).mul(airAmount) as any;
       color = vec4(mix((color as any).rgb, airTint, isSky ? isSky.select(float(0), thick) : thick), 1) as any;
+      held = null;
     }
 
     if (depthOfField && tier !== "low") {
       const viewZ = scenePass.getViewZNode() as any;
-      color = dof(color, isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ, focusDistance, uniform(depthOfField.range), focusBlur);
+      const blurred: any = dof(color, isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ, focusDistance, uniform(depthOfField.range), focusBlur);
+      color = blurred;
+      held = blurred.getTextureNode();
+    }
+
+    // Only where there is a keyboard to sprint with: a phone never runs flat out, so it is spared the pass. Ahead of the
+    // rest, so that it reads the frame the depth of field has just drawn without a copy; and nothing but the one read
+    // until a sprint begins.
+    if (rush && !(typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches)) {
+      // Speed: the frame smeared outward from the middle, nothing at the centre and most at the edges, by `rushAmount`.
+      const source: any = held ?? convertToTexture(color as any);
+      const taps = tier === "low" ? 6 : 10;
+      // The frame itself where there is no smear, read through the pass that draws it so that the pass still runs: a
+      // texture read alone does not set it going.
+      const still: any = held ? color : source;
+      color = Fn(() => {
+        const out = vec4(still.rgb, 1).toVar();
+        If(rushAmount.greaterThan(0.0005), () => {
+          const toEdge: any = screenUV.sub(vec2(0.5));
+          const reach: any = smoothstep(0.16, 0.62, length(toEdge.mul(vec2(1.3, 1)))).mul(rushAmount).mul(0.095);
+          let sum: any = vec3(0);
+          for (let i = 0; i < taps; i++) sum = sum.add(source.sample(screenUV.sub(toEdge.mul(reach.mul(i / (taps - 1))))).rgb);
+          out.assign(vec4(sum.div(taps), 1));
+        });
+        return out;
+      })();
+      held = null;
     }
 
     if (sideBlur) {
@@ -264,7 +306,7 @@ export function Post({ look, quality, hasHaze, bounce = true, overlay = false, d
     return { stack, tuners, hazeDepth, sceneDepth };
     // Only the things that change the graph's shape are dependencies. Look values go through tuners.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, sideBlur, chromatic, uniforms]);
+  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, sideBlur, chromatic, rush, halfBounce, uniforms]);
 
   useEffect(() => {
     gl.toneMappingExposure = look.exposure;

@@ -11,8 +11,9 @@ import { LOAD_ORDER, type LoadStep } from "../ui/Loader";
 import { CameraRig, GrabProvider, useGrabRegistry } from "./controls";
 import { Post } from "./Post";
 import { Extents } from "./extents";
+import { Hover } from "./hover";
 import { withRetries } from "./retry";
-import { AdaptiveQuality, DPR_STEPS, initialTier, QualityProvider, scenePhase, type QualityChoice } from "./quality";
+import { AdaptiveQuality, initialTier, topDpr, QualityProvider, scenePhase, type QualityChoice } from "./quality";
 import { SettingsProvider, useCreateSettings } from "./settings";
 import { DEFAULT_LOOK, type DayDefinition, type Look, type QualityTier, type RenderPhase } from "./types";
 
@@ -97,6 +98,7 @@ function startingView(camera: DayDefinition["camera"]) {
   const view = narrow && camera.phone ? camera.phone : camera;
   return { position: view.position, target: view.target, fov: view.fov ?? camera.fov };
 }
+
 
 function SceneWarmup({ phase, onCompiling, onReady }: { phase: RefObject<RenderPhase>; onCompiling: () => void; onReady: () => void }) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
@@ -203,6 +205,8 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
   const [choice, setChoice] = useState<QualityChoice>("auto");
   const [autoTier, setAutoTier] = useState<QualityTier>(initialTier);
   const [isWebGPU, setIsWebGPU] = useState(true);
+  // Held here, not set on the renderer, because the canvas puts its dpr prop back whenever this component renders.
+  const [dpr, setDpr] = useState(topDpr);
   const fpsRef = useRef<HTMLElement | null>(null);
   const phase = scenePhase;
   const loadId = useRef(0);
@@ -261,6 +265,10 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
     if (error) advance("done");
   }, [error, advance]);
 
+  // Full resolution again for a new day, or a tier chosen by hand.
+  const maxDpr = definition?.maxDpr;
+  useEffect(() => setDpr(Math.min(topDpr(), maxDpr ?? Infinity)), [choice, loaded?.id, maxDpr]);
+
   useEffect(() => {
     if (!loaded) return;
     document.title = `${String(loaded.day.day).padStart(2, "0")} ${loaded.day.word} | Codevember`;
@@ -272,7 +280,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
         className="cv-canvas"
         // three r185 folded the soft filter into PCF, which softens by each light's shadow.radius.
         shadows="percentage"
-        dpr={Math.min(DPR_STEPS[0], globalThis.devicePixelRatio || 1)}
+        dpr={dpr}
         // Well past any sky dome plus the furthest the camera can get from it, or zooming out cuts a black hole in the sky.
         camera={{ fov: 36, near: 0.05, far: 400 }}
         gl={async (props) => {
@@ -297,7 +305,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
           <SettingsProvider value={settings}>
             <GrabProvider value={registry}>
               <LookContext.Provider value={applyLook}>
-                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} phase={phase} />
+                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} halfBounce={definition?.passes?.halfBounce === true} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} rush={definition?.passes?.rush ?? definition?.explore === true} phase={phase} />
                 <AdaptiveQuality
                   choice={choice}
                   floor={definition?.autoFloor}
@@ -310,7 +318,8 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
                 />
                 {definition ? (
                   <>
-                    <CameraRig key={`rig-${loaded.day.day}`} {...startingView(definition.camera)} limits={definition.camera.limits} registry={registry} />
+                    <CameraRig key={`rig-${loaded.day.day}`} {...startingView(definition.camera)} sprintFov={definition.camera.sprintFov ?? (definition.explore ? 0.2 : 0)} limits={definition.camera.limits} registry={registry} />
+                    {definition.hover ?? definition.explore ? <Hover key={`hover-${loaded.day.day}`} /> : null}
                     {definition.extents ? <Extents key={`extents-${loaded.day.day}`} {...definition.extents} /> : null}
                     <SceneBoundary key={loaded.day.day} onError={setError}>
                       <Suspense fallback={null}>

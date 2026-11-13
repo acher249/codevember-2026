@@ -89,17 +89,25 @@ export type CameraLimits = { turn: EachWay<"left" | "right" | "up" | "down">; mo
 export type DayDefinition = {
   // `phone`, if given, is where the camera starts instead on a narrow screen, where a desktop's framing would leave the
   // subject off to one side.
-  camera: { position: [number, number, number]; target: [number, number, number]; fov?: number; limits?: CameraLimits; phone?: { position: [number, number, number]; target: [number, number, number]; fov?: number } };
+  camera: { position: [number, number, number]; target: [number, number, number]; fov?: number; sprintFov?: number; limits?: CameraLimits; phone?: { position: [number, number, number]; target: [number, number, number]; fov?: number } };
   look?: Partial<Look>;
+  // A world to move about in rather than a thing to turn over: Shift flies or runs flat out, widening the view a fifth
+  // and streaking the edges of the frame. It also hovers, as below.
+  explore?: boolean;
+  // The eye always hangs a little in the air and drifts, laid over whatever the controls do. On for an explorable world.
+  hover?: boolean;
   extents?: Extents;
   // The settings that get their own pills on a phone, down the right of the screen. The panel holds the rest.
   phonePills?: string[];
   // Auto will not go below this. For a day whose whole point is lost on a lower tier.
   autoFloor?: QualityTier;
+  // The most pixels per CSS pixel the day draws at, for scenes too heavy to shade at a retina screen's full density.
+  maxDpr?: number;
   // Auto starts no higher than this, on a day so heavy that stepping down later would stall it with a rebuild.
   autoStart?: QualityTier;
   // Passes a scene has no use for, so it need not pay for them. Both default to on.
-  passes?: { bounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: DepthOfField; sideBlur?: SideBlur; chromatic?: number };
+  // halfBounce traces the bounce light at half size, for a day that needs the time more than the detail.
+  passes?: { bounce?: boolean; halfBounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: DepthOfField; sideBlur?: SideBlur; chromatic?: number; rush?: boolean };
   settings?: SettingsSchema;
   hint?: string;
   // How the scene is made, in a couple of sentences. Shown under the wordmark on desktop.

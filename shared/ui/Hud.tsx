@@ -12,6 +12,7 @@ import { resetPrompt, usePromptDone } from "../engine/prompt";
 import { GithubIcon, REPO } from "./github";
 import { sound, useSoundOn } from "../engine/sound";
 import { SETTLE, TextMotion, fade, inTurn, rise, riseBig } from "./motion";
+import { FrameGraph } from "./FrameGraph";
 import { Overview } from "./Overview";
 
 const pad = (day: number) => String(day).padStart(2, "0");
@@ -444,6 +445,8 @@ export function Hud({ day, hint, prompt, notes, overview, Overlay, settings, pho
               <p className="cv-stats">
                 {isWebGPU ? "WebGPU" : "WebGL fallback"} · {isWebGPU ? tier : "low"} · <span ref={fpsRef as RefObject<HTMLSpanElement>}>…</span>
               </p>
+              {/* Frame times while developing only; the deployed site never shows them. */}
+              {process.env.NODE_ENV !== "production" ? <FrameGraph /> : null}
             </footer>
           </div>
         </div>

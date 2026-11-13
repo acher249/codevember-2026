@@ -12,6 +12,8 @@ import type { CameraLimits } from "./types";
 export const orbitPoint: { current: THREE.Vector3 | null } = { current: null };
 // Set while something else steers the camera, such as walking. The rig then lets go of it: no orbit, no flying, no zoom.
 export const cameraTaken = { current: false };
+// The field of view the rig flies at when not sprinting, for whatever takes the camera to hand it back at.
+export const flyFov = { current: 36 };
 
 type Grabbable = {
   pick: (ray: THREE.Ray) => { distance: number; point: THREE.Vector3 } | null;
@@ -60,6 +62,8 @@ type RigProps = {
   position: [number, number, number];
   target: [number, number, number];
   fov?: number;
+  // How much wider the view opens while flying flat out with Shift held, as a fraction; none unless a day asks.
+  sprintFov?: number;
   limits?: CameraLimits;
   registry: GrabRegistry;
 };
@@ -75,7 +79,7 @@ function eachWay<T extends string>(limit: number | Record<T, number>, ways: T[])
   return typeof limit === "number" ? (Object.fromEntries(ways.map((way) => [way, limit])) as Record<T, number>) : limit;
 }
 
-export function CameraRig({ position, target, fov = 36, limits, registry }: RigProps) {
+export function CameraRig({ position, target, fov = 36, sprintFov = 0, limits, registry }: RigProps) {
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
   const dom = useThree((state) => state.gl.domElement) as HTMLCanvasElement;
 
@@ -103,7 +107,7 @@ export function CameraRig({ position, target, fov = 36, limits, registry }: RigP
 
   useEffect(() => {
     camera.position.set(...position);
-    camera.fov = fov;
+    camera.fov = flyFov.current = fov;
     camera.updateProjectionMatrix();
     controls.target.set(...target);
     if (limits) {
@@ -140,6 +144,7 @@ export function CameraRig({ position, target, fov = 36, limits, registry }: RigP
   const state = useRef({
     keys: new Set<string>(),
     velocity: new THREE.Vector3(),
+    sprint: 0,
     zoom: 0,
     pointer: new THREE.Vector2(),
     pointerFresh: false,
@@ -333,6 +338,7 @@ export function CameraRig({ position, target, fov = 36, limits, registry }: RigP
       rig.taken = cameraTaken.current;
       controls.enabled = !rig.taken && !rig.held;
       rig.velocity.set(0, 0, 0);
+      rig.sprint = 0;
       rig.zoom = 0;
       // Handed back, the orbit starts again from wherever the camera was left.
       if (!rig.taken) controls.update();
@@ -352,6 +358,15 @@ export function CameraRig({ position, target, fov = 36, limits, registry }: RigP
     wish.addScaledVector(right, held("KeyD", "ArrowRight") - held("KeyA", "ArrowLeft"));
     wish.y += held("KeyE", "Space") - held("KeyQ");
     if (wish.lengthSq() > 1) wish.normalize();
+    if (sprintFov) {
+      // Flying flat out, the view eases a little wider, and back as Shift or the keys are let go.
+      rig.sprint += ((boost > 1 && wish.lengthSq() > 0 ? 1 : 0) - rig.sprint) * (1 - Math.exp(-delta * 3));
+      const wide = flyFov.current * (1 + sprintFov * rig.sprint);
+      if (Math.abs(camera.fov - wide) > 1e-3) {
+        camera.fov = wide;
+        camera.updateProjectionMatrix();
+      }
+    }
     rig.velocity.lerp(wish.multiplyScalar(speed), 1 - Math.exp(-delta * 10));
 
     if (rig.velocity.lengthSq() > 1e-6) {

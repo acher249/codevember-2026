@@ -71,6 +71,13 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <a href="12-feather">Code</a> · <a href="https://adamwebsite.com/codevember/12-feather/">Live</a>
     </td>
   </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="13-labyrinth"><img src="videos/13-labyrinth.gif" alt="Labyrinth" width="260"></a><br>
+      <b>Day 13: <a href="13-labyrinth">Labyrinth</a></b><br>
+      <a href="13-labyrinth">Code</a> · <a href="https://adamwebsite.com/codevember/13-labyrinth/">Live</a>
+    </td>
+  </tr>
 </table>
 
 ## Quick start
@@ -101,6 +108,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 10 | [Caustic](10-caustic) | Coloured glass in low sun, its light bent into bright colours on the table. |
 | 11 | [Rust](11-rust) | A rusted fence post, scanned from the real thing. |
 | 12 | [Feather](12-feather) | A pair of bird's wings built from the bone out, every feather on the bone it grows from. |
+| 13 | [Labyrinth](13-labyrinth) | A labyrinth without end that never stops rebuilding itself. |
 
 ## Controls
 

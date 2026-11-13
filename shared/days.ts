@@ -53,7 +53,8 @@ const LIVE: Record<number, string> = {
   9: "A smooth clay skin over simple shapes, with another skin under it, for ever. Swipe and it peels away in curls that float off.",
   10: "Coloured glass in low sun, its light bent into bright colours on the table.",
   11: "A rusted fence post, scanned from the real thing.",
-  12: "A pair of bird's wings built from the bone out, every feather on the bone it grows from."
+  12: "A pair of bird's wings built from the bone out, every feather on the bone it grows from.",
+  13: "A labyrinth without end that never stops rebuilding itself."
 };
 
 const CODEVEMBER_YEAR = 2026;
