@@ -17,11 +17,12 @@ function Scene() {
 const tesseract: DayDefinition = {
   camera: { position: [3.1, 4.3, 15.1], target: [0, 3.6, 0], fov: 36 },
   phonePills: ["form"],
-  // The heavier forms can push Auto down, and Low has no depth of field, which every form needs.
+  // The heavier forms can push Auto down, but no further than medium.
   autoFloor: "medium",
   extents: { centre: [0, 3.6, 0], radius: 70, color: "#ffe4c8" },
-  passes: { bounce: false, haze: false, depthOfField: { range: 8, sharpSky: true } },
-  look: { background: "#07050f", ao: 0.3, aoRadius: 0.5, vignette: 0.42, grain: 0.012, bloomThreshold: 1.15 },
+  // No depth of field: since three r187 it softens the whole shape from the starting view.
+  passes: { bounce: false, haze: false },
+  look: { background: "#07050f", ao: 0, aoRadius: 0.5, vignette: 0.42, grain: 0.012, bloomThreshold: 1.15 },
   settings: {
     form: {
       type: "choice",

@@ -8,7 +8,7 @@ import { useSettingRef } from "../shared/engine/settings";
 import { useLook } from "../shared/engine/Stage";
 import { type FormName, GAP, GAP_GROWTH, gooOf, JOINTS, Parts, TUNED_SIZE } from "./forms";
 import { makeHall, shadeSurface, useFinish } from "./finish";
-import { Turning, useLens, useStudyView } from "./four";
+import { Turning, useStudyView } from "./four";
 import { makeMarcher, MarchedShell, useMarchedMaterial } from "./marching";
 import { SPEED_UNIT, usePulse } from "./pulse";
 
@@ -45,8 +45,9 @@ export function Hypercube({ form }: { form: FormName }) {
   const shape = useMemo(() => ({ thickness: uniform(1) as any, size: uniform(1.35) as any }), []);
   const parts = useMemo(() => new Parts(form), [form]);
   useStudyView([3.5, 4.4, 17], CENTRE);
-  useLens(2.6);
-  useLook({ background: "#07050f", exposure: 1, bloom: 0.2, bloomThreshold: 1.3, ao: 0.42, aoRadius: 0.5, vignette: 0.42, grain: 0.012 });
+  // No screen-space occlusion: the shader works out its own, and the pass read the open sky as a floor, drawing a faint
+  // line along the horizon and speckle under it.
+  useLook({ background: "#07050f", exposure: 1, bloom: 0.2, bloomThreshold: 1.3, ao: 0, aoRadius: 0.5, vignette: 0.42, grain: 0.012 });
   useFrame((_, delta) => {
     // Dragging pushes it through the turn, either way, and it leans to follow. Both are safe: see Turning.
     const { x, y } = pointer.value;

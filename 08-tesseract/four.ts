@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three/webgpu";
 import { uniform } from "three/tsl";
 import { orbitPoint } from "../shared/engine/controls";
-import { focusBlur, focusDistance } from "../shared/engine/Post";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
 
@@ -91,15 +90,6 @@ export function useStudyView(position: [number, number, number], target: [number
     const back = Math.max(1, 1.2 / (camera as THREE.PerspectiveCamera).aspect);
     camera.position.set(target[0] + (position[0] - target[0]) * back, target[1] + (position[1] - target[1]) * back, target[2] + (position[2] - target[2]) * back);
     orbitPoint.current.set(...target);
-  });
-}
-
-// Keeps the lens on the front of the shape, so its far side falls out of focus.
-export function useLens(forward: number) {
-  const camera = useThree((state) => state.camera);
-  useFrame(() => {
-    if (orbitPoint.current) focusDistance.value = Math.max(0.5, camera.position.distanceTo(orbitPoint.current) - forward);
-    focusBlur.value = 0.8;
   });
 }
 
