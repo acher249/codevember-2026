@@ -36,6 +36,7 @@ From [Poly Haven](https://polyhaven.com):
 | [Shrub Sorrel 01](https://polyhaven.com/a/shrub_sorrel_01) | Rico Cilliers |
 | [Shrub 03](https://polyhaven.com/a/shrub_03) | Rico Cilliers |
 | [Rock Moss Set 01](https://polyhaven.com/a/rock_moss_set_01) | Kless Gyzen |
+| [Bark Brown 02](https://polyhaven.com/a/bark_brown_02), on the twigs in Tension | Rob Tuytel |
 
 From [ambientCG](https://ambientcg.com): [Moss 003](https://ambientcg.com/view?id=Moss003).
 

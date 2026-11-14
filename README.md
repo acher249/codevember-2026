@@ -77,6 +77,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 13: <a href="13-labyrinth">Labyrinth</a></b><br>
       <a href="13-labyrinth">Code</a> · <a href="https://adamwebsite.com/codevember/13-labyrinth/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="14-tension"><img src="videos/14-tension.gif" alt="Tension" width="260"></a><br>
+      <b>Day 14: <a href="14-tension">Tension</a></b><br>
+      <a href="14-tension">Code</a> · <a href="https://adamwebsite.com/codevember/14-tension/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -109,6 +114,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 11 | [Rust](11-rust) | A rusted fence post, scanned from the real thing. |
 | 12 | [Feather](12-feather) | A pair of bird's wings built from the bone out, every feather on the bone it grows from. |
 | 13 | [Labyrinth](13-labyrinth) | A labyrinth without end that never stops rebuilding itself. |
+| 14 | [Tension](14-tension) | An orb web beaded with dew, in four weathers. Pluck a thread and the spider comes running. |
 
 ## Controls
 

@@ -54,7 +54,8 @@ const LIVE: Record<number, string> = {
   10: "Coloured glass in low sun, its light bent into bright colours on the table.",
   11: "A rusted fence post, scanned from the real thing.",
   12: "A pair of bird's wings built from the bone out, every feather on the bone it grows from.",
-  13: "A labyrinth without end that never stops rebuilding itself."
+  13: "A labyrinth without end that never stops rebuilding itself.",
+  14: "An orb web beaded with dew, in four weathers. Pluck a thread and the spider comes running."
 };
 
 const CODEVEMBER_YEAR = 2026;
