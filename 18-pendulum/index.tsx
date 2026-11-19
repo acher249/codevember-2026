@@ -14,12 +14,14 @@ import { followPrompt } from "../shared/ui/Follow";
 import { shareResult } from "../shared/ui/Share";
 import { Aim, Canvas, Turntable, canvasColours, canvasTurn } from "./canvas";
 import { LANDINGS, createPaint } from "./paint";
-import { FLOOR, Pendulum, PIVOT, VESSELS, type VesselName } from "./pendulum";
+import { FLOOR, Pendulum, VESSELS } from "./pendulum";
 import { Rig } from "./rig";
 import { prepareSave, savePainting } from "./save";
 import { CAN_SPOTS, Cans, PAINTS } from "./studio";
 import { Gallery } from "./studios";
 import { WindowLight } from "./windowLight";
+import { rgbToZuv } from "./zuv";
+import { createOutletPaints } from "./brush-colors";
 
 // How much paint has gone down this visit, for the follow card's moment.
 const made = { seconds: 0, throws: 0, earned: false };
@@ -50,13 +52,19 @@ function Scene() {
   // Swaying gently when the studio comes up, waiting to be thrown: nothing pours until the visitor gives it a toss.
   const pendulum = useMemo(() => {
     const p = new Pendulum();
+    p.vessel = VESSELS.divided;
     p.rest();
     return p;
   }, []);
   const store = useSettingsStore();
   const paintColour = useSetting<string>("colour");
+  const secondColour = useSetting<string>("colourB");
+  const mixing = useSetting<string>("mixing");
+  // A parcel keeps the color it left with, including after its bucket changes color.
+  const colourCache = useRef(new Map<string, { linear: THREE.Color; zuv: THREE.Vector3 }>());
   const ground = useSetting<keyof typeof canvasColours>("canvas");
-  const vessel = useSetting<VesselName>("vessel");
+  const zVariation = useSetting<number>("zVariation");
+  const outletPaints = useMemo(() => [createOutletPaints(paintColour, zVariation), createOutletPaints(secondColour, zVariation)], [paintColour, secondColour, zVariation]);
   const spinSpeed = useSetting<number>("spinSpeed");
   const turntable = useSetting<number>("turntable");
   const paused = useSetting<boolean>("paused");
@@ -85,32 +93,35 @@ function Scene() {
   // The save, once the whole studio is up and drawing behind the loader: its first press then costs no more than any.
   const savePrepared = useRef(false);
 
-  // Another vessel comes full.
-  const lastVessel = useRef(vessel);
-  useEffect(() => {
-    if (lastVessel.current === vessel) return;
-    lastVessel.current = vessel;
-    pendulum.level = 1;
-    sound.play("tinkle", { gain: 0.4, pitch: 0.8 });
-  }, [vessel, pendulum]);
-
   // A new colour is a fresh can (the tinkle at most twice a second, as the colour pad is dragged).
-  const lastColour = useRef({ colour: paintColour, at: 0 });
+  const lastColour = useRef({ colours: [paintColour, secondColour], at: 0 });
   useEffect(() => {
-    if (lastColour.current.colour === paintColour) return;
-    lastColour.current.colour = paintColour;
+    const colours = [paintColour, secondColour];
+    const changed = colours.some((colour, i) => lastColour.current.colours[i] !== colour);
+    pendulum.colour = paintColour;
+    pendulum.secondaryColour = secondColour;
+    if (!changed) return;
     pendulum.level = 1;
+    lastColour.current.colours = colours;
     const now = performance.now();
     if (now - lastColour.current.at < 500) return;
     lastColour.current.at = now;
     sound.play("tinkle", { gain: 0.5, pitch: 1.2 });
-  }, [paintColour, pendulum]);
+  }, [paintColour, secondColour, pendulum]);
+
+  useSettingAction("start", () => {
+    store.set("paused", false);
+    pendulum.launch(0.30, 0, 0, 0.70);
+    made.throws++;
+    dismissPrompt();
+    sound.play("whoosh", { gain: 0.5, pitch: 0.7 });
+  });
 
   useSettingAction("fresh", () => {
     paint.u.wipe.value = 1;
     pendulum.level = 1;
-    // A fresh canvas waits for its first toss again.
     pendulum.rest();
+    // A fresh canvas waits for its first toss again.
     resetPrompt();
     sound.play("rustle", { gain: 0.6, pitch: 0.8 });
   });
@@ -138,14 +149,13 @@ function Scene() {
       // The hanging vessel: a sphere about its middle, as wide as it is when it hangs nearly still, growing the faster it
       // swings (to about twice that at a brisk swing) so a moving can is easy to catch; and round the bail and knot.
       const v = pendulum.vessel;
-      const up = hit.centre.subVectors(PIVOT, pendulum.end).normalize();
+      const up = hit.centre.subVectors(pendulum.pivot, pendulum.end).normalize();
       hit.centre.copy(pendulum.end).addScaledVector(up, -(v.bail + v.height / 2));
       const moving = THREE.MathUtils.smoothstep(pendulum.speed, 0.2, 1.4);
       const grab = Math.max(0.13, v.top + 0.04) + moving * 0.12;
-      const nearBody = ray.distanceSqToPoint(hit.centre) < grab * grab;
       const top = 0.05 + moving * 0.09;
-      const nearTop = ray.distanceSqToPoint(pendulum.end) < top * top;
-      const swing = nearBody || nearTop ? ray.origin.distanceTo(hit.centre) : Infinity;
+      const near = ray.distanceSqToPoint(hit.centre) < grab * grab || ray.distanceSqToPoint(pendulum.end) < top * top;
+      const swing = near ? ray.origin.distanceTo(hit.centre) : Infinity;
       let best: { d: number; colour: string } | null = null;
       CAN_SPOTS.forEach((spot, k) => {
         const centre = hit.point.copy(spot).setY(0.1);
@@ -219,35 +229,61 @@ function Scene() {
     paint.u.yieldStep.value = 0.00038;
     paint.u.mobility.value = 0.155;
     paint.u.drying.value = DRYING / (60 * flows);
-    pendulum.hole = 8.8e-6;
-    pendulum.vessel = VESSELS[vessel] ?? VESSELS.can;
-    pendulum.paused = paused;
     // Spinning, from the middle of each slider: right turns it clockwise seen from above, left anticlockwise. The vessel
     // turns about the rope up to a little over a turn a second; the canvas on its turntable up to a turn in 2.5 seconds.
-    // Eased to a new speed rather than jumping to it, so a reset spins down quickly but smoothly. The can's one hole is
-    // in the middle of its base, where turning does nothing, so it does not turn.
+    // Eased to a new speed rather than jumping to it, so a reset spins down quickly but smoothly.
     const toward = 1 - Math.exp(-delta * 6);
-    const spinTo = vessel === "can" ? 0 : -spinSpeed * Math.PI * 2 * 1.2;
-    pendulum.spin += (spinTo - pendulum.spin) * toward;
+    const spinTo = -spinSpeed * Math.PI * 2 * 1.2;
     pendulum.canvasSpin += (-turntable * Math.PI * 2 * 0.4 - pendulum.canvasSpin) * toward;
-    paint.u.colour.value.set(paintColour).convertSRGBToLinear();
+    pendulum.hole = 8.8e-6;
+    pendulum.paused = paused;
+    pendulum.colour = paintColour;
+    pendulum.secondaryColour = secondColour;
+    pendulum.outletPaints = outletPaints;
+    pendulum.spin += (spinTo - pendulum.spin) * toward;
+    pendulum.update(delta);
+    paint.u.colouredLandings.value = 1;
+    paint.u.mixing.value = mixing === "zuv" ? 1 : 0;
     spilt.u.yieldStep.value = paint.u.yieldStep.value;
     spilt.u.mobility.value = paint.u.mobility.value;
     spilt.u.drying.value = DRYING / (60 * (startTier === "low" ? 1 : 2));
-    spilt.u.colour.value.copy(paint.u.colour.value);
+    spilt.u.colouredLandings.value = 1;
+    spilt.u.mixing.value = paint.u.mixing.value;
 
-    pendulum.update(delta);
     // This frame's landings into the simulations: the canvas's, and the floor's for what missed it.
     let onCanvas = 0;
     let onFloor = 0;
+    // Rare compressed arrival bursts flush a batch instead of dropping paint.
     for (const l of pendulum.landings) {
       const into = l.floor ? spilt : paint;
-      const k = l.floor ? onFloor : onCanvas;
-      if (k >= LANDINGS) continue;
+      let k = l.floor ? onFloor : onCanvas;
+      if (k === LANDINGS) {
+        into.u.count.value = k;
+        into.step(gl, 0);
+        if (l.floor) onFloor = 0; else onCanvas = 0;
+        k = 0;
+      }
       // The stream's radius as it lands: its paint spread over the length it falls in a step (about 1.2 cm at 3 m/s).
       const r = Math.sqrt(l.volume / (Math.PI * 0.012));
       (into.u.landings.array as THREE.Vector4[])[k].set(l.x, l.z, l.volume, r);
       (into.u.moving.array as THREE.Vector4[])[k].set(l.vx, l.vz, l.ax, l.az);
+      if (l.paint) {
+        // Brush variants are already real, gamut-safe paint colors. Retain their full-precision ZUV values.
+        (into.u.colours.array as THREE.Vector3[])[k].fromArray(l.paint.linear);
+        (into.u.zuvColours.array as THREE.Vector3[])[k].fromArray(l.paint.zuv);
+      } else {
+        let colour = colourCache.current.get(l.colour);
+        if (!colour) {
+          const hex = Number.parseInt(l.colour.slice(1), 16);
+          const encoded: [number, number, number] = [(hex >> 16 & 255) / 255, (hex >> 8 & 255) / 255, (hex & 255) / 255];
+          colour = { linear: new THREE.Color(l.colour), zuv: new THREE.Vector3().fromArray(rgbToZuv(encoded)) };
+          // Continuous color-pad drags should not grow this cache for the lifetime of the scene.
+          if (colourCache.current.size >= 256) colourCache.current.clear();
+          colourCache.current.set(l.colour, colour);
+        }
+        (into.u.colours.array as THREE.Vector3[])[k].set(colour.linear.r, colour.linear.g, colour.linear.b);
+        (into.u.zuvColours.array as THREE.Vector3[])[k].copy(colour.zuv);
+      }
       if (l.floor) onFloor++;
       else onCanvas++;
     }
@@ -298,7 +334,7 @@ function Scene() {
       <Aim pendulum={pendulum} />
       <Cans />
       <group ref={rig}>
-        <Rig pendulum={pendulum} paintColour={paintColour} vessel={vessel} />
+        <Rig pendulum={pendulum} paintColour={paintColour} secondColour={secondColour} />
       </group>
     </>
   );
@@ -403,7 +439,7 @@ function Finished() {
         whiteSpace: "nowrap"
       }}
     >
-      Finished. Grab the can to swing it again.
+      Finished. Grab a bucket or start again.
     </div>
   );
 }
@@ -429,7 +465,19 @@ const pendulum: DayDefinition = {
   // A little air: a warm haze builds with distance, so the far room sits back behind the canvas.
   passes: { haze: false, bounce: false, overlay: true, depthOfField: { range: 2.5, air: 0.16, airRate: 0.06 } },
   settings: {
-    colour: { type: "colour", label: "Paint colour", value: PAINTS[3].colour, presets: PAINTS.map((p) => ({ label: p.label, colour: p.colour })) },
+    start: { type: "action", label: "Start painting" },
+    mixing: {
+      type: "choice",
+      label: "Color mixing",
+      options: [
+        { value: "rgb", label: "RGB" },
+        { value: "zuv", label: "ZUV artistic" }
+      ],
+      value: "zuv"
+    },
+    zVariation: { type: "range", label: "Z variation", min: 0, max: 0.3, step: 0.01, value: 0.15, reset: 0.15 },
+    colour: { type: "colour", label: "Color A", value: "#0000ff", presets: [{ label: "Blue", colour: "#0000ff" }, ...PAINTS.map((p) => ({ label: p.label, colour: p.colour }))] },
+    colourB: { type: "colour", label: "Color B", value: "#ffff00", presets: [{ label: "Yellow", colour: "#ffff00" }, ...PAINTS.map((p) => ({ label: p.label, colour: p.colour }))] },
     canvas: {
       type: "choice",
       label: "Canvas",
@@ -440,18 +488,7 @@ const pendulum: DayDefinition = {
       ],
       value: "white"
     },
-    vessel: {
-      type: "choice",
-      label: "Vessel",
-      options: [
-        { value: "can", label: "Can · 1 hole", short: "Can" },
-        { value: "three", label: "Bucket · 3 holes", short: "3 holes" },
-        { value: "five", label: "Bucket · 5 holes", short: "5 holes" },
-        { value: "slot", label: "Bucket · slot", short: "Slot" }
-      ],
-      value: "can"
-    },
-    spinSpeed: { type: "range", label: "Paint can spin speed", short: "Can spin", min: -1, max: 1, step: 0.01, value: 0, reset: 0, when: { setting: "vessel", not: "can" } },
+    spinSpeed: { type: "range", label: "Bucket spin speed", short: "Bucket spin", min: -1, max: 1, step: 0.01, value: 0, reset: 0 },
     turntable: { type: "range", label: "Canvas spin speed", short: "Canvas spin", min: -1, max: 1, step: 0.01, value: 0, reset: 0 },
     paused: { type: "toggle", label: "Pause paint", value: false, icon: "pause", showWhile: "pouring" },
     // Whether paint is running from the vessel now, for the phone's pause button to follow.
@@ -459,20 +496,20 @@ const pendulum: DayDefinition = {
     fresh: { type: "action", label: "New canvas" },
     save: { type: "action", label: "Save painting" }
   },
-  phonePills: ["fresh", "save"],
-  phoneDock: ["colour", "vessel", "spinSpeed", "turntable"],
+  phonePills: ["start", "fresh", "save"],
+  phoneDock: ["mixing", "zVariation", "colour", "colourB", "spinSpeed", "turntable"],
   phoneDockPills: ["paused"],
-  prompt: { title: "Grab the can and give it a toss", detail: "Pull it back and let it fly", low: true },
-  hint: "Grab the can, pull it back and let it fly: it swings and pours, drawing as it goes. Try a bucket with more holes or a slot, spin it or the canvas either way, and save your painting when you like it.",
+  prompt: { title: "Start painting", detail: "Use the controls, or grab the bucket and throw it", low: true },
+  hint: "Choose the two compartment colors, then start painting or throw the bucket by hand. Compare RGB / ZUV on the same painting.",
   Overlay: Overlays,
-  notes: "A can of paint swinging on a rope over a canvas in a white daylit studio. Pull it back, let it go, and it draws.",
+  notes: "One partitioned bucket, two colors. Its neighboring outlets bring the wet paint together. Compare RGB and ZUV mixing on the same painting.",
   overview: [
     {
       title: "The swing",
       points: [
         "The can is a spherical pendulum stepped 240 times a second, its slowly turning, decaying ellipse drawing the spirograph.",
         "Grab and throw the can up to 55 degrees out; a dotted line previews the next six seconds by running the pendulum ahead.",
-        "A bucket's 3 or 5 holes or its slot can spin either way about the rope, and the canvas can turn; paint stops before it heaps."
+        "Two neighboring outlets pour the compartment colors together; the bucket and canvas can spin, and paint stops before it heaps."
       ]
     },
     {
@@ -480,7 +517,8 @@ const pendulum: DayDefinition = {
       points: [
         "Paint leaves the hole by Torricelli's law as free-falling parcels, drawn as a tube that thins and breaks into beads.",
         "A GPU thin film on up to 640 by 640 columns flows past its yield stress and dries in seconds, so later lines lie crisply over earlier ones.",
-        "Paint that misses the canvas lands on a second, coarser film over five metres of concrete floor."
+        "Paint that misses the canvas lands on a second, coarser film over five metres of concrete floor.",
+        "Switch between linear RGB and artistic ZUV mixing on the same painting: both follow the same deposits, flow and drying."
       ]
     },
     {

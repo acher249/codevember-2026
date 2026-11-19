@@ -125,6 +125,8 @@ The rocks, reef and sand on the floor of Kelp are scans from [Poly Haven](https:
 
 ## Pendulum
 
+The optional artistic ZUV color mixing model is by William F. Barnes. The implementation, parameters, and display gamut policy are described in [the Pendulum notes](18-pendulum/README.md#compare-color-mixing).
+
 The worn concrete under the studio floor's paint in Pendulum is a scan from [Poly Haven](https://polyhaven.com), CC0, so no credit is required, but it is due.
 
 | Asset | By |

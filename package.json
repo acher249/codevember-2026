@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "serve out",
     "typecheck": "tsc --noEmit",
+    "test:pendulum-zuv": "node scripts/test-pendulum-zuv.mjs",
     "lint": "eslint ."
   },
   "dependencies": {

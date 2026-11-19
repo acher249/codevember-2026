@@ -7,6 +7,7 @@ import { attribute, cameraPosition, color, cos, float, int, max, min, mix, mx_no
 import { useDispose } from "../shared/engine/dispose";
 import type { Paint } from "./paint";
 import { CANVAS, FACE, type Pendulum, STAND, STRETCHER } from "./pendulum";
+import { paintColourNode } from "./zuv-nodes";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
 
@@ -72,7 +73,7 @@ export function Canvas({ paint, ground, floor = false }: { paint: Paint; ground:
   const tone = useMemo(() => uniform(new THREE.Color(canvasColours.black)), []);
   tone.value.set(ground);
   const { mesh, frame, geometries, materials } = useMemo(() => {
-    const { N, SIZE, CELL, cells, wet } = paint;
+    const { N, SIZE, CELL, cells, zuv, wet } = paint;
     const lift = floor ? 0.0008 : FACE;
     // One vertex a column, each sitting over its column's middle.
     const geometry = new THREE.PlaneGeometry(SIZE - CELL, SIZE - CELL, N - 1, N - 1);
@@ -91,7 +92,11 @@ export function Canvas({ paint, ground, floor = false }: { paint: Paint; ground:
     const dx = heightAt(i.add(1), j).sub(heightAt(i.sub(1), j)).div(CELL * 2) as any;
     const dz = heightAt(i, j.add(1)).sub(heightAt(i, j.sub(1))).div(CELL * 2) as any;
     const normal = varying(normalize(vec3(dx.negate(), 1, dz.negate()))) as any;
-    const paintColour = varying(own.yzw) as any;
+    const rgbColour = varying(own.yzw) as any;
+    const zuvColour = varying(zuv.element(id));
+    // Interpolate signed ZUV before decoding it. A uniform branch makes comparison immediate and leaves the RGB view
+    // free of the display conversion's trigonometry; both histories keep evolving in the simulation either way.
+    const paintColour = paintColourNode(rgbColour, zuvColour, paint.u.mixing) as any;
     const thick = varying(own.x) as any;
     const wetness = varying(wet.element(id).x) as any;
     const fresh = varying(wet.element(id).y) as any;
