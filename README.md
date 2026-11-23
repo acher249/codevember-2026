@@ -128,6 +128,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 22: <a href="22-echo">Echo</a></b><br>
       <a href="22-echo">Code</a> · <a href="https://adamwebsite.com/codevember/22-echo/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="23-magma"><img src="videos/23-magma.gif" alt="Magma" width="260"></a><br>
+      <b>Day 23: <a href="23-magma">Magma</a></b><br>
+      <a href="23-magma">Code</a> · <a href="https://adamwebsite.com/codevember/23-magma/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -169,6 +174,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 20 | [Cocoon](20-cocoon) | A chrysalis hanging under a branch in a dewy garden. Tap it and watch a butterfly split the case, climb out, fill and dry its wings, walk the branch and fly away; the next one's chrysalis grows. |
 | 21 | [Bolt](21-bolt) | A plasma globe floating in a dark room it lights itself. Touch the glass and the lightning finds your fingertip; turn on IRL Hands and touch it with your real fingers through the camera. |
 | 22 | [Echo](22-echo) | The AI bubble, floating in a hall of mirrors. Throw a GPU at it and watch it pop, the burst echoing out through every reflection in a storm of graphics cards and memory. |
+| 23 | [Magma](23-magma) | A microwave pocket, fresh out of the microwave, with magma for a filling. Bite the end and it pours out over the paper plate, scorching it and setting the crumbs alight; then add some pizza rolls and bite those too. |
 
 ## Controls
 

@@ -214,6 +214,7 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
         if (halfBounce) giPass.resolutionScale = 0.5;
         tuners.push((next) => {
           giPass.giIntensity.value = next.gi;
+          giPass.radius.value = next.giRadius ?? 8;
           giPass.aoIntensity.value = next.ao;
         });
         const diffuse = scenePass.getTextureNode("diffuseColor");

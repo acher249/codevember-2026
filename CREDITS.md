@@ -170,3 +170,12 @@ Echo's graphics cards, memory sticks, bubble and hall of mirrors are all made in
 | Asset | By | License |
 | --- | --- | --- |
 | "Infinite, 3D Head Scan" (`public/assets/22-echo/dust/head.glb`, `head-relief.jpg`), from the three.js examples; hidden inner parts removed and the displacement map scaled to 1024 px | Lee Perry-Smith, [Infinite-Realities](https://www.ir-ltd.net), based on a work at [triplegangers.com](https://www.triplegangers.com) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+
+## Magma
+
+The counter's marble and the knife block's oak are CC0 textures, so no credit is required, but it is due. Everything else (the pocket and its sleeve, the pizza rolls, the plate, the microwave and the props) is modelled, printed and shaded in code, and its sounds are synthesised.
+
+| Asset | By | License |
+| --- | --- | --- |
+| [Marble 012](https://ambientcg.com/view?id=Marble012) (`public/assets/23-magma/marble012_*`) | [ambientCG](https://ambientcg.com) | CC0 |
+| [Oak Veneer 05](https://polyhaven.com/a/oak_veneer_05) (`public/assets/23-magma/oak_veneer_05_*`) | [Poly Haven](https://polyhaven.com) | CC0 |

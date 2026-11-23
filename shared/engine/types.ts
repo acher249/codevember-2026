@@ -75,6 +75,8 @@ export type Look = {
   bloomThreshold: number;
   // Strength of the screen-space bounce light. Only the high tier runs it.
   gi: number;
+  // How far the bounce light reaches, in world units (8 when not set): a tabletop scene needs far less.
+  giRadius?: number;
   // Ambient occlusion strength, and its reach in world units.
   ao: number;
   aoRadius: number;

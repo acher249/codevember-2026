@@ -63,7 +63,8 @@ const LIVE: Record<number, string> = {
   19: "A clay sculpture hanging in a shaft of light. Drag across it to erode it cell by cell, the finest parts first, and wave away the dust; or grow it back out.",
   20: "A chrysalis hanging under a branch in a dewy garden. Tap it and watch a butterfly split the case, climb out, fill and dry its wings, walk the branch and fly away; the next one's chrysalis grows.",
   21: "A plasma globe floating in a dark room it lights itself. Touch the glass and the lightning finds your fingertip; turn on IRL Hands and touch it with your real fingers through the camera.",
-  22: "The AI bubble, floating in a hall of mirrors. Throw a GPU at it and watch it pop, the burst echoing out through every reflection in a storm of graphics cards and memory."
+  22: "The AI bubble, floating in a hall of mirrors. Throw a GPU at it and watch it pop, the burst echoing out through every reflection in a storm of graphics cards and memory.",
+  23: "A microwave pocket, fresh out of the microwave, with magma for a filling. Bite the end and it pours out over the paper plate, scorching it and setting the crumbs alight; then add some pizza rolls and bite those too."
 };
 
 const CODEVEMBER_YEAR = 2026;
