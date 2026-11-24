@@ -1,0 +1,2 @@
+All CC0. Bark scan from Poly Haven (polyhaven.com): bark_brown_02. Moss from ambientCG (ambientcg.com): Moss003.
+Everything else (the tree and its leaves, the nest, the chicks, the thermostat, the snow) is modelled and shaded in code; no outside assets. The sounds are synthesised in code, except on adamwebsite.com, where the chicks' teeth chattering is a recorded sound effect (ElevenLabs) and the background music is "Forest Serenity"; neither is in the open-source repo.

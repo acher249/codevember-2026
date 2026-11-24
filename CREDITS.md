@@ -179,3 +179,12 @@ The counter's marble and the knife block's oak are CC0 textures, so no credit is
 | --- | --- | --- |
 | [Marble 012](https://ambientcg.com/view?id=Marble012) (`public/assets/23-magma/marble012_*`) | [ambientCG](https://ambientcg.com) | CC0 |
 | [Oak Veneer 05](https://polyhaven.com/a/oak_veneer_05) (`public/assets/23-magma/oak_veneer_05_*`) | [Poly Haven](https://polyhaven.com) | CC0 |
+
+## Nest
+
+The tree's bark and the moss are CC0 textures, so no credit is required, but it is due. Everything else (the tree and its leaves, the nest, the chicks, the thermostat and the snow) is modelled and shaded in code, and its sounds are synthesised.
+
+| Asset | By | License |
+| --- | --- | --- |
+| [Bark Brown 02](https://polyhaven.com/a/bark_brown_02) (`public/assets/24-nest/bark_brown_02_*`) | [Poly Haven](https://polyhaven.com) | CC0 |
+| [Moss 003](https://ambientcg.com/view?id=Moss003) (`public/assets/24-nest/moss_*`) | [ambientCG](https://ambientcg.com) | CC0 |
