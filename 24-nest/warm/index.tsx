@@ -21,7 +21,7 @@ import { Chick, CHICK, chickKit, type Mood } from "./chick";
 import { lighting } from "./light";
 import { buildNest, type Scans } from "./nest";
 import { buildLeaves } from "./leaves";
-import { buildSetting, FACING, MOUNT } from "./setting";
+import { buildSetting, FACING, MOUNT, PHONE } from "./setting";
 import { chirp, detent, pant, peep, plink } from "./sound";
 import { buildThermostat, HIGH, LOW, RING, STEP_ANGLE } from "./thermostat";
 
@@ -359,7 +359,7 @@ function Scene() {
     if (process.env.NODE_ENV === "production") return;
     const normals = new THREE.MeshNormalNodeMaterial();
     Object.assign(globalThis, {
-      __nest: { state: state.current, l, chicks, kit, lights, leaves, postBypass, thermostat, nest, setting, camera, scene, orbit: orbitControls, set: (t: number) => turnTo(t),
+      __nest: { state: state.current, airAmount, l, chicks, kit, lights, leaves, postBypass, thermostat, nest, setting, camera, scene, orbit: orbitControls, set: (t: number) => turnTo(t),
         // Draws and triangles over one whole frame, every pass included.
         draws: () =>
           new Promise((resolve) => {
@@ -561,6 +561,8 @@ function Scene() {
     const focus = camera.position.distanceTo(scratch.a.set(8, 0, 0));
     focusDistance.value += (focus - focusDistance.value) * (1 - Math.exp(-dt * 4));
     focusBlur.value = 2.6;
+    // Without depth of field (Low, as phones get) the wood behind would stand out sharp: thicker air hides it instead.
+    airAmount.value = tier === "low" ? 1.9 : 1;
   });
 
   useEffect(
@@ -626,10 +628,10 @@ const day: DayDefinition = {
     position: [START.x, START.y, START.z],
     target: [TARGET.x, TARGET.y, TARGET.z],
     fov: FOV,
-    // On a phone held upright: further back and wider, so the nest and the thermostat both fit across it.
-    phone: { position: [7, 19.8, 53.1], target: [7, 2.5, 0], fov: 62 },
-    // Round to either side of the nest and well over the top; the engine's give stretches these, so they stay under 85.
-    limits: { turn: { left: 80, right: 80, up: 38, down: 14 }, move: { left: 14, right: 14, down: 2, up: 2, nearer: 22, further: 14 } }
+    // On a phone held upright: wider, close on the nest across the screen, and the thermostat up on the trunk at the right.
+    phone: { position: [7, 10.2, 35.3], target: [7, 3, 0], fov: 62 },
+    // Round to either side of the nest and well over the top, and on a phone (its view wider) in further; the engine's give stretches these, so they stay under 85.
+    limits: { turn: { left: 80, right: 80, up: 38, down: 14 }, move: { left: 14, right: 14, down: 2, up: 2, nearer: PHONE ? 34 : 22, further: 14 } }
   },
   look: { background: "#000000", exposure: 1, bloom: 0.3, bloomThreshold: 0.85, gi: 0, ao: 0, vignette: 0.5, grain: 0.03, haze: 0 },
   // A little air in depth (its colour follows the dial), starting just short of the nest so the subject stays clear.

@@ -45,9 +45,12 @@ const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 // Where the trunk stands, how thick, and which way the thermostat on it faces (toward the camera, a little left).
 export const TRUNK = { x: 23, z: -8, radius: 9.5 };
-// Turned round the trunk toward the nest: about 128 degrees round from +x, still well in view from the front.
-export const FACING = new THREE.Vector3(Math.cos(THREE.MathUtils.degToRad(128)), 0, Math.sin(THREE.MathUtils.degToRad(128)));
-export const MOUNT = new THREE.Vector3(TRUNK.x, 4.5, TRUNK.z).addScaledVector(FACING, TRUNK.radius + 0.1);
+// Turned round the trunk toward the nest: about 128 degrees round from +x, still well in view from the front. On a phone
+// held upright, higher and further round, up beside the prompt where a thumb finds it, clear of the nest below.
+export const PHONE = typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
+const DIAL = PHONE ? { round: 131, up: 6.5 } : { round: 128, up: 4.5 };
+export const FACING = new THREE.Vector3(Math.cos(THREE.MathUtils.degToRad(DIAL.round)), 0, Math.sin(THREE.MathUtils.degToRad(DIAL.round)));
+export const MOUNT = new THREE.Vector3(TRUNK.x, DIAL.up, TRUNK.z).addScaledVector(FACING, TRUNK.radius + 0.1);
 
 type Limb = { points: THREE.Vector3[]; r: [number, number]; twigs: number };
 
@@ -508,7 +511,8 @@ export function buildSetting(l: Lighting, scans: Scans, quality: "low" | "medium
     const [r0, r1] = LIMBS[k].r;
     return { at: at.addScaledVector(n, r0 + (r1 - r0) * t - 0.1), normal: n };
   };
-  const front = Math.atan2(FACING.z, FACING.x);
+  // The knots keep their places round the trunk wherever the thermostat is.
+  const front = THREE.MathUtils.degToRad(128);
   const knotGeometry = knots([
     { ...onTrunk(22, front - 0.45), r: 1.5, kind: "stub", seed: 1 },
     { ...onTrunk(-19, front + 0.25), r: 2.2, kind: "burl", seed: 2 },
