@@ -4,8 +4,8 @@
 // the plate, the pocket and each other. Each is a little fried-dough pillow (about 3.8 × 2.8 × 1.6 cm): puffed in the
 // middle, pinched thin and crimped at its two ends, its corners standing out as ears; golden with browner edges, its
 // surface blistered with small bubbles as fried dough is. A press bites one in half: the shader cuts it away along a
-// toothed edge, its hollow inside shows sauce glowing hot, and its filling pours out onto the plate as lava (a source in
-// the same flow as the pocket's). A second press eats the rest. Once a roll lies still it is fixed where it lies and
+// toothed edge, it is full of molten filling to the cut, and the filling runs out over the cut's lip onto the plate as
+// lava (a source in the same flow as the pocket's), its level in the hollow sinking as it goes. A second press eats the rest. Once a roll lies still it is fixed where it lies and
 // no longer simulated; a roll still falling into lava floats on it, and any in lava scorch.
 
 import { useFrame } from "@react-three/fiber";
@@ -26,15 +26,18 @@ import {
   If,
   max,
   mix,
+  mx_noise_float,
   normalGeometry,
   normalize,
   normalView,
   positionGeometry,
   positionView,
   select,
+  sign,
   sin,
   smoothstep,
   texture,
+  time,
   vec3
 } from "three/tsl";
 import { useGrabbable } from "../shared/engine/controls";
@@ -43,8 +46,8 @@ import { dismissPrompt } from "../shared/engine/prompt";
 import { lehmer } from "../shared/engine/random";
 import { intro } from "./intro";
 import type { Lava } from "./lava";
-import type { Crumbs, Puffs } from "./render";
-import { bottomHeight, COUNTER, outline, PLATE, plateHeight, POCKET, pocketToWorld, SLEEVE, topHeight } from "./shape";
+import { incandescence, type Crumbs, type Puffs } from "./render";
+import { bottomHeight, COUNTER, mirrored, outline, PLATE, plateHeight, POCKET, pocketToWorld, SLEEVE, topHeight } from "./shape";
 import { crunch, thud } from "./sound";
 import { clock } from "./time";
 
@@ -56,8 +59,12 @@ export const ROLL = { length: 0.135, width: 0.1, height: 0.058 };
 const MAX = 40;
 const GRAVITY = 9.8 * 4;
 // How much filling one holds, and how fast it runs out once bitten (scene units cubed, and per second).
-const FILLING = 0.0003;
-const POUR_RATE = 0.0004;
+const FILLING = 0.0007;
+const POUR_RATE = 0.0002;
+// The filling's level in the hollow (the roll's own frame): the top of the hollow when it is bitten, sinking to a last
+// skin at the bottom as it runs out.
+const HOLLOW = { low: -0.0165, high: 0.027 };
+const levelAt = (full: number) => HOLLOW.low + (HOLLOW.high - HOLLOW.low) * full;
 
 // What the scene calls: drop some in, clear them all.
 export const pizzaRolls = { add: (count: number) => void count, clear: () => {} };
@@ -66,11 +73,18 @@ export const pizzaRolls = { add: (count: number) => void count, clear: () => {} 
 // roll's cut runs at (z, y) across it, for a bite at `at` along it, slanted, bowed in the middle as a mouth bites, and
 // toothed. The same sum runs in the shader (the cut) and here (the cut face's ring), so the two meet.
 const THICK = 0.008;
-export type RollBite = { at: number; slope: number; depth: number; phase: number; freq: number };
-function cutAt(b: RollBite, z: number, y: number) {
-  const across = z / (ROLL.width / 2);
-  const teeth = Math.abs(Math.sin(z * b.freq + b.phase)) * 0.005 + Math.sin(z * 61 + b.phase * 3) * 0.0018 + Math.sin(y * 90 + z * 37 + b.phase) * 0.0012 + y * 0.06;
-  return b.at + b.slope * z - b.depth * (1 - across * across) + teeth;
+// A bite takes either end (across the roll, `lengthwise` false: the cut runs along z, the roll's width) or either long
+// side (lengthwise: the cut runs along x, its length), whichever was pressed. `a` is the point's place along the cut
+// line, and `half` how far that line runs either way.
+export type RollBite = { at: number; slope: number; depth: number; phase: number; freq: number; lengthwise: boolean };
+function cutAt(b: RollBite, a: number, y: number, half = b.lengthwise ? ROLL.length / 2 : ROLL.width / 2) {
+  const across = a / half;
+  const teeth = Math.abs(Math.sin(a * b.freq + b.phase)) * 0.005 + Math.sin(a * 61 + b.phase * 3) * 0.0018 + Math.sin(y * 90 + a * 37 + b.phase) * 0.0012 + y * 0.06;
+  return b.at + b.slope * a - b.depth * (1 - across * across) + teeth;
+}
+// Whether a point of the roll (in its own frame) is on the side a bite keeps: the side pressed goes.
+function kept(b: RollBite, side: number, x: number, y: number, z: number) {
+  return b.lengthwise ? z * side <= cutAt(b, x, y) : x * side <= cutAt(b, z, y);
 }
 
 // The roll's shape: a top and a bottom sheet over its outline, joined round a thin pressed rim; and inside it, the
@@ -154,25 +168,47 @@ function buildRoll(seed: number) {
   return { geometry, at, inner };
 }
 
+// The filling as lava, by how hot it still is (1 fresh, 0 cold, as a roll's glow): molten orange churning, then a skin
+// that crusts over with glowing cracks, near-black once cold, as the lava on the plate does.
+function molten(heat: any) {
+  const p = positionGeometry as any;
+  const churn = mx_noise_float(p.mul(160).add(vec3(0, time.mul(0.6), 0)))
+    .mul(0.3)
+    .add(0.85) as any;
+  const crust = smoothstep(0.75, 0.3, heat) as any;
+  const crack = smoothstep(0.08, 0.0, mx_noise_float(p.mul(260).add(3)).abs()) as any;
+  const colour = mix(vec3(0.3, 0.06, 0.015), mix(vec3(0.13, 0.05, 0.025), vec3(0.032, 0.028, 0.026), smoothstep(0.3, 0.0, heat)), crust) as any;
+  // Never white-hot: tone-mapped, that read as a pale slice of cheese. Orange at its hottest, as the pocket's filling.
+  const glow = incandescence(heat.mul(0.6).add(0.12))
+    .mul(churn)
+    .mul(float(1).sub(crust.mul(0.9)))
+    .add(incandescence(heat.mul(0.7).add(0.2)).mul(crack).mul(crust).mul(0.8)) as any;
+  return { colour, glow, roughness: mix(float(0.12), float(0.55), crust) as any };
+}
+
 // The cut face of a bitten roll: the ring of dough between its outer shell and its inner one, along the bite's edge
 // (cutAt) on the side kept. ring is 0 at the outside, 1 at the hollow, for the shading.
-function buildCap(shape: { at: (u: number, v: number, side: number) => number[]; inner: (u: number, v: number, side: number) => number[] }, b: RollBite, keep: number) {
+function buildCap(shape: { at: (u: number, v: number, side: number) => number[]; inner: (u: number, v: number, side: number) => number[] }, b: RollBite, keep: number, upright: boolean) {
   const NV = 40;
   const loop: [number, number][] = [];
   for (let j = 0; j <= NV; j++) loop.push([-1 + (2 * j) / NV, 1]);
   for (let j = NV - 1; j > 0; j--) loop.push([-1 + (2 * j) / NV, -1]);
+  // Across the roll the loop runs over its width (v) and the cut is found along its length (u); lengthwise, the other way.
+  const stepHalf = b.lengthwise ? ROLL.width / 2 : ROLL.length / 2;
   // A point of a surface where the cut crosses it: found by stepping along the roll to where the cut is, twice.
-  const onCut = (surface: (u: number, v: number, side: number) => number[], v: number, side: number) => {
-    let u = (keep * b.at) / (ROLL.length / 2);
-    let p = surface(u, v, side);
+  const onCut = (surface: (u: number, v: number, side: number) => number[], w: number, side: number) => {
+    let c = (keep * b.at) / stepHalf;
+    const point = (c: number) => (b.lengthwise ? surface(w, c, side) : surface(c, w, side));
+    let p = point(c);
     for (let n = 0; n < 2; n++) {
-      u = Math.max(-0.95, Math.min(0.95, (keep * cutAt(b, p[2], p[1])) / (ROLL.length / 2)));
-      p = surface(u, v, side);
+      c = Math.max(-0.95, Math.min(0.95, (keep * cutAt(b, b.lengthwise ? p[0] : p[2], p[1])) / stepHalf));
+      p = point(c);
     }
-    return [keep * cutAt(b, p[2], p[1]), p[1], p[2]];
+    const cut = keep * cutAt(b, b.lengthwise ? p[0] : p[2], p[1]);
+    return b.lengthwise ? [p[0], p[1], cut] : [cut, p[1], p[2]];
   };
-  const outer = loop.map(([v, side]) => onCut(shape.at, v * 0.999, side));
-  const hollow = loop.map(([v, side]) => onCut(shape.inner, v * 0.999, side));
+  const outer = loop.map(([w, side]) => onCut(shape.at, w * 0.999, side));
+  const hollow = loop.map(([w, side]) => onCut(shape.inner, w * 0.999, side));
   const positions: number[] = [];
   const rings: number[] = [];
   for (let n = 0; n < loop.length; n++) {
@@ -193,23 +229,79 @@ function buildCap(shape: { at: (u: number, v: number, side: number) => number[];
         rings.push(ring);
       }
   }
+  // Lit as one face looking out of the cut: per-triangle normals across the teeth's little steps shaded it in facets.
+  const out = b.lengthwise ? [0, 0, keep] : [keep, 0, 0];
+  const normals: number[] = [];
+  const parts: number[] = [];
+  const spills: number[] = [];
+  for (let n = 0; n < rings.length; n++) {
+    normals.push(...out);
+    parts.push(0);
+    spills.push(0, 0, 0);
+  }
+  // The filling, filling the hollow to the cut: a face across the hollow's ring, drawn up to the level it has sunk to.
+  const centre = [0, 0, 0];
+  for (const p of hollow) for (let a = 0; a < 3; a++) centre[a] += p[a] / hollow.length;
+  for (let n = 0; n < hollow.length; n++)
+    for (const p of [centre, hollow[n], hollow[(n + 1) % hollow.length]]) {
+      positions.push(p[0], p[1], p[2]);
+      rings.push(1);
+      normals.push(...out);
+      parts.push(1);
+      spills.push(0, 0, 0);
+    }
+  // And where it runs out: a tongue of it over the cut's lower lip and down onto what the roll lies on, across the
+  // middle of the hollow. Each point keeps how far out of the cut it is and the hollow's floor there; its height is
+  // set as it draws, from the filling's level at the cut down to the roll's underside (its y here) a couple of
+  // centimetres out, where the lava it pours meets it.
+  const W = 12;
+  const OUT = [0, 0.003, 0.007, 0.012, 0.018, 0.025, 0.032];
+  const tongue: { p: number[]; f: number; floor: number; w: number }[][] = [];
+  for (let i = 0; i <= W; i++) {
+    const across = -1 + (2 * i) / W;
+    const w = across * 0.72;
+    const lip = onCut(shape.inner, w, -1);
+    const under = onCut(shape.at, w, -1);
+    tongue.push(
+      OUT.map((f) => {
+        // Narrower as it spreads away from the cut's middle, rounded across.
+        const p = [lip[0] + out[0] * f, under[1] + 0.0015 - 0.004 * w * w, lip[2] + out[2] * f];
+        return { p, f: f / OUT[OUT.length - 1], floor: lip[1], w: across };
+      })
+    );
+  }
+  const down = Math.SQRT1_2;
+  // Only on a roll lying the right way up: on its side or upside down its "down" is not the world's, and the tongue
+  // stood up out of it.
+  for (let i = 0; i < (upright ? W : 0); i++)
+    for (let r = 0; r < OUT.length - 1; r++) {
+      const quad = [tongue[i][r], tongue[i + 1][r], tongue[i + 1][r + 1], tongue[i][r], tongue[i + 1][r + 1], tongue[i][r + 1]];
+      for (const q of quad) {
+        positions.push(q.p[0], q.p[1], q.p[2]);
+        rings.push(1);
+        normals.push(out[0] * down, down, out[2] * down);
+        parts.push(2);
+        spills.push(q.f, q.floor, q.w);
+      }
+    }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("aRing", new THREE.Float32BufferAttribute(rings, 1));
   geometry.setAttribute("aGlow", new THREE.Float32BufferAttribute(new Float32Array(rings.length), 1));
-  // Lit as one face looking out of the cut: per-triangle normals across the teeth's little steps shaded it in facets.
-  const normals = new Float32Array(rings.length * 3);
-  for (let n = 0; n < rings.length; n++) normals[n * 3] = keep;
-  geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  geometry.setAttribute("aLevel", new THREE.Float32BufferAttribute(new Float32Array(rings.length).fill(levelAt(1)), 1));
+  geometry.setAttribute("aPart", new THREE.Float32BufferAttribute(parts, 1));
+  geometry.setAttribute("aSpill", new THREE.Float32BufferAttribute(spills, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
   return geometry;
 }
 
-// The fried dough's surface, made once at load into a small tiling texture (it spans TILE scene units): red the
-// blisters (distance to the nearest of 28 × 28 bubble centres), green the pores (48 × 48), blue a soft value noise (3
+// The fried dough's surface, made once at load into a small tiling texture, 256 square (it spans TILE scene units, about
+// 2.5 cm, which is never more than a few hundred pixels on screen): red the blisters (distance to the nearest of 28 × 28 bubble centres), green the pores (48 × 48), blue a soft value noise (3
 // cells across, read at other scales for toasting, flecks, seeping sauce and cheese), alpha a fine grain (90 across).
-// Drawn as noise per pixel the rolls cost up to 18 fps; as a few texture reads, nearly nothing.
+// Drawn as noise per pixel the rolls cost up to 18 fps; as a few texture reads, nearly nothing. At 512 it took 150 ms
+// to make at load.
 const TILE = 0.1;
-function bakeDough(size = 512) {
+function bakeDough(size = 256) {
   const random = lehmer(9);
   const worley = (cells: number) => {
     const at = new Float32Array(cells * cells * 2).map(() => random());
@@ -278,13 +370,25 @@ type Roll = {
   bites: number;
   side: number;
   glow: number;
+  // How much of its filling is left in it (1 to a last skin), once bitten, and whether it lay the right way up then.
+  full: number;
+  upright: boolean;
   scorch: number;
   vy: number;
   // How long it has lain still; once settled it is fixed where it lies and no longer simulated.
   still: number;
   settled: boolean;
+  // Where it last moved to (a few millimetres or degrees away from where it was), and when: a roll that has landed and
+  // only shivered on the spot since, against its neighbours or the rim, is as settled as one lying still.
+  landed: boolean;
+  spot: { x: number; y: number; z: number; q: THREE.Quaternion; at: number };
+  // Where it was before the last step, to draw it between that and where it is now, as far as the frame's time has got:
+  // the steps and the frames do not line up, and drawn at each step it would stutter as it falls.
+  was: { p: THREE.Vector3; q: THREE.Quaternion };
   variant: number;
   born: number;
+  // Its bite, once bitten: where the cut runs (cutAt), for the floor the lava runs over and the mouth it runs from.
+  look: RollBite | null;
 };
 
 function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crumbs; puffs: Puffs; light: boolean }) {
@@ -295,7 +399,8 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     // Per roll: how toasted, which way and where it is cut (side, at), how hot inside, how scorched.
     const shade = new Float32Array(MAX);
     const cut = new Float32Array(MAX * 2);
-    const heat = new Float32Array(MAX * 2);
+    // Per roll, how hot its inside is, how scorched its outside, and its filling's level inside (only seen once bitten).
+    const heat = new Float32Array(MAX * 3);
     // Per roll, its bite: slant, bow, the teeth's phase and spacing (where along it is aCut's second value).
     const biteShape = new Float32Array(MAX * 4);
     const random = lehmer(5);
@@ -303,10 +408,11 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
       shade[k] = random();
       cut[k * 2] = 1;
       cut[k * 2 + 1] = 1;
+      heat[k * 3 + 2] = levelAt(1);
     }
     const shadeAttr = new THREE.InstancedBufferAttribute(shade, 1);
     const cutAttr = new THREE.InstancedBufferAttribute(cut, 2);
-    const heatAttr = new THREE.InstancedBufferAttribute(heat, 2);
+    const heatAttr = new THREE.InstancedBufferAttribute(heat, 3);
     const biteAttr = new THREE.InstancedBufferAttribute(biteShape, 4);
     geometry.setAttribute("aBite", biteAttr);
     geometry.setAttribute("aShade", shadeAttr);
@@ -321,7 +427,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     const puff = attribute("aPuff", "float") as any;
     const toast = attribute("aShade", "float") as any;
     const c = attribute("aCut", "vec2") as any;
-    const h = attribute("aHeat", "vec2") as any;
+    const h = attribute("aHeat", "vec3") as any;
     const shift = toast.mul(0.731) as any;
     const uv0 = p.xz.div(TILE).add(shift) as any;
     const facing = abs(normalGeometry).pow(4) as any;
@@ -335,15 +441,19 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     // The bite: what is past the cut is gone, along its own slanted, bowed, toothed edge (cutAt, as on the processor).
     const bs = attribute("aBite", "vec4") as any;
     const kind = attribute("aKind", "float") as any;
-    const across = p.z.div(ROLL.width / 2) as any;
-    const teeth = sin(p.z.mul(bs.w).add(bs.z))
+    // aCut's first value is the side kept and the way it is cut: ±1 across the roll, ±2 lengthwise.
+    const lengthwise = abs(c.x).greaterThan(1.5) as any;
+    const along = select(lengthwise, p.z, p.x) as any;
+    const line = select(lengthwise, p.x, p.z) as any;
+    const across = line.div(select(lengthwise, float(ROLL.length / 2), float(ROLL.width / 2))) as any;
+    const teeth = sin(line.mul(bs.w).add(bs.z))
       .abs()
       .mul(0.005)
-      .add(sin(p.z.mul(61).add(bs.z.mul(3))).mul(0.0018))
-      .add(sin(p.y.mul(90).add(p.z.mul(37)).add(bs.z)).mul(0.0012))
+      .add(sin(line.mul(61).add(bs.z.mul(3))).mul(0.0018))
+      .add(sin(p.y.mul(90).add(line.mul(37)).add(bs.z)).mul(0.0012))
       .add(p.y.mul(0.06)) as any;
-    const cutLine = c.y.add(bs.x.mul(p.z)).sub(bs.y.mul(float(1).sub(across.mul(across)))).add(teeth) as any;
-    const past = p.x.mul(c.x).sub(cutLine) as any;
+    const cutLine = c.y.add(bs.x.mul(line)).sub(bs.y.mul(float(1).sub(across.mul(across)))).add(teeth) as any;
+    const past = along.mul(sign(c.x)).sub(cutLine) as any;
     // Fried dough: blistered with small bubbles, finer pores between them, a faint grain.
     const bubbles = surface.r as any;
     const pores = surface.g as any;
@@ -390,11 +500,14 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     // At the bite: the pale soft dough the teeth tore through, a few millimetres back from the cut.
     const torn = float(1).sub(smoothstep(0, 0.006, past.negate())).mul(c.y.lessThan(0.9).select(float(1), float(0))) as any;
     const front = mix(charred, vec3(0.9, 0.78, 0.56), torn.mul(0.8)) as any;
-    // Inside: sauce and melted cheese over the thin dough, hot.
-    const cheese = smoothstep(0.5, 0.75, soft(3)) as any;
-    const inside = mix(vec3(0.45, 0.07, 0.02), vec3(0.85, 0.55, 0.15), cheese) as any;
+    // Inside: full of the filling, molten, up to its level (h.z) as it runs out; above that, the hollow's walls it ran
+    // down from, still coated in it and a little cooler.
+    const filled = p.y.lessThan(h.z) as any;
+    const filling = molten(h.x);
+    const coat = molten(h.x.mul(0.8));
+    const inside = select(filled, filling.colour, coat.colour) as any;
     // The outer shell's outside is the dough; everything else (its inside, and the inner shell lining the hollow) is
-    // sauce and cheese.
+    // the filling.
     const outside = frontFacing.and(kind.lessThan(0.5)) as any;
     material.colorNode = Fn(() => {
       If(past.greaterThan(0), () => Discard());
@@ -403,7 +516,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     material.emissiveNode = select(
       outside,
       vec3(0.9, 0.35, 0.08).mul(torn).mul(h.x).mul(0.15),
-      mix(vec3(1.2, 0.22, 0.03), vec3(1.4, 0.7, 0.12), cheese).mul(h.x).mul(0.9)
+      select(filled, filling.glow, coat.glow.mul(0.7))
     ) as any;
     material.roughnessNode = mix(float(0.78), float(0.55), edge.mul(0.5)).add(grain.mul(0.08)) as any;
 
@@ -411,23 +524,45 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
 
     // The bitten rolls' cut faces, one small mesh each (shaped by its own bite), all in one material: a thin golden
     // crust at the outside, the soft pale bread through the thickness, sauce soaking its inner edge, glowing while hot.
+    // And the filling: a face of it across the hollow, up to its level, and a tongue of it running out over the lip.
     const capMaterial = new THREE.MeshStandardNodeMaterial({ side: THREE.DoubleSide, roughness: 0.9 });
     const ringAt = attribute("aRing", "float") as any;
     const capGlow = attribute("aGlow", "float") as any;
+    const level = attribute("aLevel", "float") as any;
+    const part = attribute("aPart", "float") as any;
+    const spill = attribute("aSpill", "vec3") as any;
+    // The tongue falls from the level at the cut (never below the hollow's floor there) to the roll's underside,
+    // rounded across: full height in its middle, down to the hollow's floor at its sides.
+    const from = spill.y.add(max(level, spill.y).add(0.001).sub(spill.y).mul(float(1).sub(spill.z.mul(spill.z)).max(0).sqrt())) as any;
+    const fall = smoothstep(0, 0.85, spill.x) as any;
+    const cp = positionGeometry as any;
+    capMaterial.positionNode = select(part.greaterThan(1.5), vec3(cp.x, mix(from, cp.y, fall), cp.z), cp) as any;
+    const lavaPart = part.greaterThan(0.5) as any;
+    const lava = molten(capGlow);
     // (Read from the dough texture by position, the bread came out flat grey: plain colours here.)
     const breadCrumb = vec3(0.96, 0.82, 0.58) as any;
     const soaked = smoothstep(0.7, 1.0, ringAt) as any;
-    capMaterial.colorNode = mix(mix(vec3(0.72, 0.44, 0.17), breadCrumb, smoothstep(0.1, 0.3, ringAt)), vec3(0.62, 0.17, 0.04), soaked.mul(0.85)) as any;
+    const bread = mix(mix(vec3(0.72, 0.44, 0.17), breadCrumb, smoothstep(0.1, 0.3, ringAt)), vec3(0.62, 0.17, 0.04), soaked.mul(0.85)) as any;
+    capMaterial.colorNode = Fn(() => {
+      // The face across the hollow only up to the filling's level: above it, the empty hollow behind shows.
+      If(part.greaterThan(0.5).and(part.lessThan(1.5)).and(cp.y.greaterThan(level)), () => Discard());
+      return select(lavaPart, lava.colour, bread);
+    })();
     // The glowing filling lights its own cut face warm while it is hot (in the shade it was a cold grey).
-    capMaterial.emissiveNode = vec3(1.2, 0.35, 0.06)
+    const breadGlow = vec3(1.2, 0.35, 0.06)
       .mul(soaked)
       .mul(0.6)
       .add(vec3(0.5, 0.28, 0.1).mul(ringAt.mul(0.6).add(0.4)).mul(0.35))
       .mul(capGlow) as any;
+    capMaterial.emissiveNode = select(lavaPart, lava.glow, breadGlow) as any;
+    capMaterial.roughnessNode = select(lavaPart, lava.roughness, float(0.9)) as any;
     const capPlaceholder = new THREE.BufferGeometry();
     capPlaceholder.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3));
     capPlaceholder.setAttribute("aRing", new THREE.Float32BufferAttribute([0, 0, 0], 1));
     capPlaceholder.setAttribute("aGlow", new THREE.Float32BufferAttribute([0, 0, 0], 1));
+    capPlaceholder.setAttribute("aLevel", new THREE.Float32BufferAttribute([0, 0, 0], 1));
+    capPlaceholder.setAttribute("aPart", new THREE.Float32BufferAttribute([0, 0, 0], 1));
+    capPlaceholder.setAttribute("aSpill", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3));
     capPlaceholder.setAttribute("normal", new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
     // Each starts as an empty triangle, drawn (so its shader is built at load, not at the first bite) but invisible.
     const caps = Array.from({ length: MAX }, () => {
@@ -445,7 +580,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
     for (let k = 0; k < MAX; k++) mesh.setMatrixAt(k, hidden);
 
-    const rolls: Roll[] = Array.from({ length: MAX }, () => ({ on: false, body: null, collider: null, bites: 0, side: 1, glow: 0, scorch: 0, vy: 0, variant: 0, born: 0, still: 0, settled: false }));
+    const rolls: Roll[] = Array.from({ length: MAX }, () => ({ on: false, body: null, collider: null, bites: 0, side: 1, glow: 0, full: 1, upright: true, scorch: 0, vy: 0, variant: 0, born: 0, still: 0, settled: false, landed: false, spot: { x: 0, y: 0, z: 0, q: new THREE.Quaternion(), at: 0 }, was: { p: new THREE.Vector3(), q: new THREE.Quaternion() }, look: null }));
     return { shape, biteShape, biteAttr, caps, capMaterial, capPlaceholder, geometry, material, doughMap, mesh, shadeAttr, cutAttr, heatAttr, cut, heat, hidden, rolls, random: lehmer(17) };
   }, []);
   useDispose(parts.geometry, parts.material, parts.doughMap, parts.capMaterial, parts.capPlaceholder);
@@ -463,8 +598,22 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
           }
       return rapier.ColliderDesc.convexHull(new Float32Array(points)) ?? rapier.ColliderDesc.cuboid(ROLL.length / 4, ROLL.height / 2, ROLL.width / 2);
     };
-    return { whole: hull(-1, 1), "1": hull(-1, 0.02), "-1": hull(-0.02, 1) };
+    // Lengthwise: half the width, the whole length.
+    const side = (from: number, to: number) => {
+      const points: number[] = [];
+      for (let a = 0; a <= 4; a++)
+        for (let b = 0; b <= 4; b++)
+          for (const s of [1, -1]) {
+            const [x, y, z] = parts.shape.at(-1 + a / 2, from + ((to - from) * b) / 4, s);
+            points.push(x, y, z);
+          }
+      return rapier.ColliderDesc.convexHull(new Float32Array(points)) ?? rapier.ColliderDesc.cuboid(ROLL.length / 2, ROLL.height / 2, ROLL.width / 4);
+    };
+    return { whole: hull(-1, 1), "1": hull(-1, 0.02), "-1": hull(-0.02, 1), "2": side(-1, 0.02), "-2": side(-0.02, 1) };
   }, [rapier, parts]);
+
+  // Soft fried dough: it grips and does not bounce, whatever it lands on.
+  const doughy = (desc: any) => desc.setFriction(0.9).setRestitution(0).setRestitutionCombineRule(rapier.CoefficientCombineRule.Min).setDensity(0.5);
 
   // A roll's cut face put away (its own geometry freed).
   const clearCap = (k: number) => {
@@ -476,6 +625,10 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
   // The fixed world: the counter, the plate's upper face and the pocket in its sleeve, as they rest.
   useEffect(() => {
     const made: any[] = [];
+    // Rapier's tolerances are for metre-sized things; a roll is a few centimetres of scene (a tenth of a unit), so they are
+    // scaled to it (less sinking in and pushing back out, the shiver of a resting roll), and more iterations for the pile.
+    world.lengthUnit = 0.1;
+    world.numSolverIterations = 8;
     const fixed = (desc: any) => made.push(world.createCollider(desc.setFriction(0.8).setRestitution(0.1)));
     fixed(rapier.ColliderDesc.cuboid(3, 0.05, 3).setTranslation(0, COUNTER - 0.05, 0));
     // The plate: its upper face turned round, rings out to the rim.
@@ -520,13 +673,55 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
   }, [world, rapier]);
 
   const drops = useRef<{ at: number }[]>([]);
+  // A roll's outer shell as points (about 2 mm apart, finer than the lava's cells), in its own frame, and room for every
+  // roll's in the world.
+  const floorPoints = useMemo(() => {
+    const points: number[] = [];
+    for (let i = 0; i <= 64; i++)
+      for (let j = 0; j <= 48; j++)
+        for (const side of [1, -1]) {
+          const [x, y, z] = parts.shape.at(-1 + (2 * i) / 64, -1 + (2 * j) / 48, side);
+          points.push(x, y, z);
+        }
+    const local = new Float32Array(points);
+    return { local, world: new Float32Array(local.length * MAX) };
+  }, [parts]);
+  const floorMatrix = useMemo(() => new THREE.Matrix4(), []);
 
   const remove = (roll: Roll) => {
     clearCap(parts.rolls.indexOf(roll));
     if (roll.body && world.getRigidBody(roll.body.handle)) world.removeRigidBody(roll.body);
+    const lay = roll.settled;
     roll.body = null;
     roll.collider = null;
     roll.on = false;
+    roll.settled = false;
+    if (lay) layFloor();
+  };
+
+  // The settled rolls as the lava's floor (lava.rolls): points over each one's outer shell, both sheets (a roll can lie
+  // any way up), in the world; a bitten one's only on the side it keeps, as the shader cuts it.
+  const layFloor = () => {
+    const { local, world: points } = floorPoints;
+    let count = 0;
+    for (const roll of parts.rolls) {
+      if (!roll.on || !roll.settled || !roll.body || roll.bites > 1) continue;
+      const t = roll.body.translation();
+      const r = roll.body.rotation();
+      floorMatrix.compose(vs.set(t.x, t.y, t.z), qs.set(r.x, r.y, r.z, r.w), one);
+      const e = floorMatrix.elements;
+      for (let n = 0; n < local.length; n += 3) {
+        const x = local[n],
+          y = local[n + 1],
+          z = local[n + 2];
+        if (roll.look && !kept(roll.look, roll.side, x, y, z)) continue;
+        points[count * 3] = e[0] * x + e[4] * y + e[8] * z + e[12];
+        points[count * 3 + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
+        points[count * 3 + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+        count++;
+      }
+    }
+    lava.rolls(points, count);
   };
 
   const spawn = (k: number) => {
@@ -542,21 +737,24 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
         .setTranslation(Math.cos(a) * r, 0.55 + random() * 0.25, Math.sin(a) * r + 0.06)
         .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
         .setLinvel((random() - 0.5) * 0.3, -0.5, (random() - 0.5) * 0.3)
-        .setAngvel({ x: (random() - 0.5) * 6, y: (random() - 0.5) * 6, z: (random() - 0.5) * 6 })
+        .setAngvel({ x: (random() - 0.5) * 4, y: (random() - 0.5) * 4, z: (random() - 0.5) * 4 })
         .setAngularDamping(0.4)
         .setCcdEnabled(true)
     );
     const shape = hullShapes.whole;
-    roll.collider = world.createCollider(shape.setFriction(0.75).setRestitution(0.18).setDensity(0.5), body);
-    Object.assign(roll, { on: true, body, bites: 0, side: 1, glow: 0, scorch: 0, vy: 0, born: clock.now, still: 0, settled: false });
+    roll.collider = world.createCollider(doughy(shape), body);
+    roll.was.p.copy(body.translation());
+    roll.was.q.copy(body.rotation());
+    Object.assign(roll, { on: true, body, bites: 0, side: 1, glow: 0, full: 1, scorch: 0, vy: 0, born: clock.now, still: 0, settled: false, landed: false, look: null });
     // How done this one came out: most golden, some pale, some well browned.
     const done = random();
     (parts.shadeAttr.array as Float32Array)[k] = done < 0.2 ? done * 1.2 : done > 0.8 ? 0.8 + (done - 0.8) : 0.3 + (done - 0.2) * 0.75;
     parts.shadeAttr.needsUpdate = true;
     cut[k * 2] = 1;
     cut[k * 2 + 1] = 1;
-    heat[k * 2] = 0;
-    heat[k * 2 + 1] = 0;
+    heat[k * 3] = 0;
+    heat[k * 3 + 1] = 0;
+    heat[k * 3 + 2] = levelAt(1);
     cutAttr.needsUpdate = true;
     heatAttr.needsUpdate = true;
   };
@@ -570,6 +768,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     pizzaRolls.clear = () => {
       drops.current.length = 0;
       for (const roll of parts.rolls) remove(roll);
+      layFloor();
       for (let k = 0; k < MAX; k++) parts.mesh.setMatrixAt(k, parts.hidden);
       parts.mesh.instanceMatrix.needsUpdate = true;
     };
@@ -583,7 +782,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
 
   // Pressing a roll bites it: the ray is tested against each roll's box in its own frame (a few dozen slab tests).
   const scratch = useMemo(() => ({ q: new THREE.Quaternion(), o: new THREE.Vector3(), d: new THREE.Vector3(), hit: new THREE.Vector3() }), []);
-  const picked = useRef<{ k: number; x: number } | null>(null);
+  const picked = useRef<{ k: number; x: number; z: number } | null>(null);
   useGrabbable({
     pick: (ray) => {
       let best: { distance: number; point: THREE.Vector3 } | null = null;
@@ -597,8 +796,13 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
         const d = scratch.d.copy(ray.direction).applyQuaternion(scratch.q);
         const half = [ROLL.length / 2, ROLL.height / 2, ROLL.width / 2];
         // What is left of a half-eaten roll: only its own half of the box.
-        const lo = [roll.bites === 1 && roll.side < 0 ? 0 : -half[0], -half[1], -half[2]];
-        const hi = [roll.bites === 1 && roll.side > 0 ? 0 : half[0], half[1], half[2]];
+        const lo = [-half[0], -half[1], -half[2]];
+        const hi = [half[0], half[1], half[2]];
+        if (roll.bites === 1 && roll.look) {
+          const axis = roll.look.lengthwise ? 2 : 0;
+          if (roll.side > 0) hi[axis] = 0;
+          else lo[axis] = 0;
+        }
         let near = 0;
         let far = Infinity;
         const os = [o.x, o.y, o.z];
@@ -617,20 +821,20 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
         }
         if (!best || near < best.distance) {
           best = { distance: near, point: ray.at(near, new THREE.Vector3()) };
-          picked.current = { k, x: o.x + d.x * near };
+          picked.current = { k, x: o.x + d.x * near, z: o.z + d.z * near };
         }
       });
       return best;
     },
     grab: () => {
       const p = picked.current;
-      if (p) bite(p.k, p.x);
+      if (p) bite(p.k, p.x, p.z);
     },
     drag: () => {},
     release: () => {}
   });
 
-  const bite = (k: number, localX: number) => {
+  const bite = (k: number, localX: number, localZ = 0) => {
     intro.stop();
     dismissPrompt();
     const { rolls, cut, heat, cutAttr, heatAttr } = parts;
@@ -641,30 +845,42 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     const q = scratch.q.set(r.x, r.y, r.z, r.w);
     crunch();
     if (roll.bites === 0) {
-      // In half: the end pressed goes, the other stays, open toward where the bite was.
-      roll.side = localX >= 0 ? 1 : -1;
+      // In half: the part pressed goes, the other stays, open toward where the bite was. Pressed nearer an end, across the
+      // roll; nearer a long side, lengthwise.
+      const lengthwise = Math.abs(localZ) / (ROLL.width / 2) > Math.abs(localX) / (ROLL.length / 2);
+      roll.side = (lengthwise ? localZ : localX) >= 0 ? 1 : -1;
       roll.bites = 1;
       roll.glow = 1;
+      roll.full = 1;
+      heat[k * 3 + 2] = levelAt(1);
       // No two bites alike: a little nearer one end or the other, slanted, bowed deeper or shallower in the middle,
       // the teeth spaced and placed their own way.
       const rnd = parts.random;
-      const look: RollBite = { at: (rnd() - 0.5) * 0.024, slope: (rnd() - 0.5) * 0.3, depth: rnd() * 0.016, phase: rnd() * Math.PI * 2, freq: 110 + rnd() * 80 };
-      cut[k * 2] = roll.side;
+      const look: RollBite = { at: (rnd() - 0.5) * (lengthwise ? 0.016 : 0.024), slope: (rnd() - 0.5) * (lengthwise ? 0.15 : 0.3), depth: rnd() * 0.016, phase: rnd() * Math.PI * 2, freq: 110 + rnd() * 80, lengthwise };
+      roll.look = look;
+      cut[k * 2] = roll.side * (lengthwise ? 2 : 1);
       cut[k * 2 + 1] = look.at;
       cutAttr.needsUpdate = true;
       parts.biteShape.set([look.slope, look.depth, look.phase, look.freq], k * 4);
       parts.biteAttr.needsUpdate = true;
       clearCap(k);
       const cap = parts.caps[k];
-      cap.geometry = buildCap(parts.shape, look, roll.side);
+      // Lying the right way up (its own up within about 45° of the world's), the filling runs out of it as a tongue and
+      // its level sinks; otherwise it stays full to the cut (its level along its own up would be nowhere near level).
+      roll.upright = scratch.hit.set(0, 1, 0).applyQuaternion(q).y > 0.7;
+      cap.geometry = buildCap(parts.shape, look, roll.side, roll.upright);
       cap.matrix.compose(vs.set(t.x, t.y, t.z), qs.set(r.x, r.y, r.z, r.w), one);
       world.removeCollider(roll.collider, true);
-      const shape = hullShapes[String(roll.side) as "1" | "-1"];
-      if (shape) roll.collider = world.createCollider(shape.setFriction(0.75).setRestitution(0.15).setDensity(0.5), roll.body);
+      const shape = hullShapes[String(roll.side * (lengthwise ? 2 : 1)) as "1" | "-1" | "2" | "-2"];
+      if (shape) roll.collider = world.createCollider(doughy(shape), roll.body);
       if (!roll.settled) roll.body.wakeUp();
-      // The filling runs out of the open end, onto the plate under it.
-      const mouth = scratch.hit.set(roll.side * 0.03, -ROLL.height * 0.3, 0).applyQuaternion(q).add(t as THREE.Vector3);
-      lava.pour(mouth.x, mouth.z, FILLING, POUR_RATE, 0.026);
+      // What is left of it is the floor now, and the filling runs out of its open end: just past the cut face, onto
+      // whatever is under it there (the plate, or another roll, and over that on down).
+      layFloor();
+      const face = roll.side * (cutAt(look, 0, 0) + 0.02);
+      const mouth = scratch.hit.set(lengthwise ? 0 : face, 0, lengthwise ? face : 0).applyQuaternion(q).add(t as THREE.Vector3);
+      // Lengthwise the open side is longer, and lets it out along more of it.
+      lava.pour(mouth.x, mouth.z, FILLING, POUR_RATE, lengthwise ? 0.024 : 0.018);
       crumbs.spawn(mouth.x, t.y + 0.02, mouth.z, 8);
       for (let n = 0; n < 12; n++) puffs.emit(mouth.x + (parts.random() - 0.5) * 0.04, t.y + 0.02, mouth.z + (parts.random() - 0.5) * 0.04, 0, 0.05);
     } else {
@@ -674,7 +890,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
       remove(roll);
       parts.mesh.setMatrixAt(k, parts.hidden);
       parts.mesh.instanceMatrix.needsUpdate = true;
-      heat[k * 2] = 0;
+      heat[k * 3] = 0;
       heatAttr.needsUpdate = true;
     }
   };
@@ -683,7 +899,17 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
     Object.assign(globalThis, {
       __rolls: {
         mesh: parts.mesh,
-        bite: (k: number, x: number) => bite(k, x),
+        bite: (k: number, x: number, z = 0) => bite(k, x, z),
+        only: (k: number) => {
+          parts.rolls.forEach((r, n) => {
+            if (n !== k && r.on) {
+              remove(r);
+              parts.mesh.setMatrixAt(n, parts.hidden);
+            }
+          });
+          parts.mesh.instanceMatrix.needsUpdate = true;
+          layFloor();
+        },
         where: () => parts.rolls.map((r, k) => (r.on && r.body ? { k, bites: r.bites, ...r.body.translation(), sleeping: r.body.isSleeping(), settled: r.settled, fixed: r.body.isFixed() } : null)).filter(Boolean)
       }
     });
@@ -692,6 +918,7 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
   const lastThud = useRef(0);
   const m = useMemo(() => new THREE.Matrix4(), []);
   const qs = useMemo(() => new THREE.Quaternion(), []);
+  const qs2 = useMemo(() => new THREE.Quaternion(), []);
   const vs = useMemo(() => new THREE.Vector3(), []);
   const one = useMemo(() => new THREE.Vector3(1, 1, 1), []);
   useFrame((_, raw) => {
@@ -712,23 +939,42 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
       const roll = rolls[k];
       if (!roll.on || !roll.body) continue;
       const t = roll.body.translation();
-      if (!roll.settled) roll.body.resetForces(false);
+      // Touching anything, it is slowed hard, turning most of all: it lands with a soft tumble and lies down, rather than
+      // rocking and shivering on its corners until it settles.
+      let touching = false;
+      if (!roll.settled) {
+        roll.body.resetForces(false);
+        world.contactPairsWith(roll.collider, (other: any) => world.contactPair(roll.collider, other, (manifold: any) => (touching ||= manifold.numContacts() > 0)));
+        // Continuous collision is for the fall (fast through a thin plate); once slow, it only makes a resting roll stick.
+        // By speed, not by touching: two rolls brushing in the air are touching, and one fell through the plate.
+        const v = roll.body.linvel();
+        const fast = Math.hypot(v.x, v.y, v.z) > 1;
+        roll.body.enableCcd(fast);
+        if (touching && !fast && !roll.landed) {
+          roll.landed = true;
+          roll.spot.at = clock.now;
+          // A few flakes of fried dough knocked off as it lands.
+          crumbs.spawn(t.x, t.y - ROLL.height * 0.2, t.z, 2 + Math.floor(random() * 3));
+        }
+        roll.body.setLinearDamping(touching ? 2.5 : 0.05);
+        roll.body.setAngularDamping(touching ? 10 : 0.4);
+      }
       if (Math.hypot(t.x, t.z) < PLATE) {
         const s = lava.sample(t.x, t.z);
         const bottom = t.y - ROLL.height * 0.45;
+        // How deep it sits in lava: from its bottom, or from the lava's own floor where that is higher (lava run over the
+        // top of a roll, or over the one under it, is a coat, not a pool it sits in).
+        const floorUnder = s.y - s.depth;
         if (s.depth > 0.001 && s.surface > bottom) {
-          const sunk = Math.min(1, (s.surface - bottom) / (ROLL.height * 0.6));
+          const sunk = Math.min(1, (s.surface - Math.max(bottom, floorUnder)) / (ROLL.height * 0.6));
           if (!roll.settled) {
             const mass = roll.body.mass();
             roll.body.addForce({ x: 0, y: mass * GRAVITY * 2.2 * sunk, z: 0 }, true);
-            roll.body.setLinearDamping(1 + 10 * sunk);
-            roll.body.setAngularDamping(0.4 + 6 * sunk);
+            roll.body.setLinearDamping((touching ? 2.5 : 1) + 10 * sunk);
+            roll.body.setAngularDamping((touching ? 10 : 0.4) + 6 * sunk);
           }
           roll.scorch = Math.min(1, roll.scorch + dt * 0.12 * s.heat * sunk);
           if (s.heat > 0.4 && random() < dt * 2 * sunk) puffs.emit(t.x, s.surface + 0.01, t.z, roll.scorch > 0.5 ? 1 : 0, 0.04);
-        } else if (!roll.settled) {
-          roll.body.setLinearDamping(0.05);
-          roll.body.setAngularDamping(0.4);
         }
       }
       // A bitten roll's inside cools over half a minute, steaming while it is hot.
@@ -739,18 +985,28 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
           (glowAttr.array as Float32Array).fill(roll.glow);
           glowAttr.needsUpdate = true;
         }
+        // Its filling runs out as fast as it pours onto the plate, its level in the hollow sinking with it.
+        if (roll.upright && roll.full > 0.12) {
+          roll.full = Math.max(0.12, roll.full - (dt * POUR_RATE) / FILLING);
+          const levelAttr = parts.caps[k].geometry.getAttribute("aLevel") as THREE.BufferAttribute;
+          (levelAttr.array as Float32Array).fill(levelAt(roll.full));
+          levelAttr.needsUpdate = true;
+          heat[k * 3 + 2] = levelAt(roll.full);
+        }
         if (roll.glow > 0.3 && random() < dt * 3 * roll.glow) {
-          const p = vs.set(roll.side * 0.01, 0.01, 0).applyQuaternion(qs.set(roll.body.rotation().x, roll.body.rotation().y, roll.body.rotation().z, roll.body.rotation().w)).add(t as THREE.Vector3);
+          const lengthwise = roll.look?.lengthwise ?? false;
+          const p = vs.set(lengthwise ? 0 : roll.side * 0.01, 0.01, lengthwise ? roll.side * 0.01 : 0).applyQuaternion(qs.set(roll.body.rotation().x, roll.body.rotation().y, roll.body.rotation().z, roll.body.rotation().w)).add(t as THREE.Vector3);
           puffs.emit(p.x, p.y, p.z, 0, 0.04);
         }
       }
-      heat[k * 2] = roll.glow;
-      heat[k * 2 + 1] = roll.scorch;
+      heat[k * 3] = roll.glow;
+      heat[k * 3 + 1] = roll.scorch;
     }
     heatAttr.needsUpdate = true;
 
     // Fixed steps of a hundred-and-twentieth (small, fast pieces), as many as the time needs, at most a dozen a frame;
     // none once every roll has settled.
+    let between = 1;
     if (rolls.some((r) => r.on && !r.settled)) {
       acc.current += dt;
       // On a phone, sixtieths and at most four a frame (falling a touch less finely; the rolls are continuous-collision
@@ -760,13 +1016,20 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
       world.timestep = tick;
       let steps = 0;
       while (acc.current >= tick && steps < most) {
+        for (const roll of rolls)
+          if (roll.on && roll.body && !roll.settled) {
+            roll.was.p.copy(roll.body.translation());
+            roll.was.q.copy(roll.body.rotation());
+          }
         world.step();
         acc.current -= tick;
         steps++;
       }
       if (steps === most) acc.current = 0;
+      between = acc.current / tick;
     } else acc.current = 0;
 
+    let settledNow = false;
     for (let k = 0; k < MAX; k++) {
       const roll = rolls[k];
       if (!roll.on || !roll.body) continue;
@@ -784,9 +1047,16 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
       const v = roll.body.linvel();
       const w = roll.body.angvel();
       roll.still = Math.hypot(v.x, v.y, v.z) < 0.04 && Math.hypot(w.x, w.y, w.z) < 0.4 ? roll.still + dt : 0;
-      if (roll.still > 0.4 || roll.body.isSleeping() || clock.now - roll.born > 6) {
+      const spot = roll.spot;
+      if (Math.hypot(t.x - spot.x, t.y - spot.y, t.z - spot.z) > 0.006 || spot.q.angleTo(qs.set(r.x, r.y, r.z, r.w)) > 0.12) {
+        Object.assign(spot, { x: t.x, y: t.y, z: t.z, at: clock.now });
+        spot.q.copy(qs);
+      }
+      const stuck = roll.landed && clock.now - spot.at > 0.35;
+      if (roll.still > 0.4 || stuck || roll.body.isSleeping() || clock.now - roll.born > 6) {
         roll.body.setBodyType(rapier.RigidBodyType.Fixed, false);
         roll.settled = true;
+        settledNow = true;
       }
       // A soft paper-plate tap as one lands hard.
       const vy = v.y;
@@ -797,14 +1067,18 @@ function RollsInWorld({ lava, crumbs, puffs, light }: { lava: Lava; crumbs: Crum
         lastThud.current = now;
         thud(Math.min(1, jolt / 5));
       }
-      m.compose(vs.set(t.x, t.y, t.z), qs.set(r.x, r.y, r.z, r.w), one);
+      // Drawn where it is once it settles (it is not drawn again), and otherwise between its last two steps.
+      const f = roll.settled ? 1 : between;
+      m.compose(vs.copy(roll.was.p).lerp(t as THREE.Vector3, f), qs.copy(roll.was.q).slerp(qs2.set(r.x, r.y, r.z, r.w), f), one);
       mesh.setMatrixAt(k, m);
       if (roll.bites === 1) parts.caps[k].matrix.copy(m);
     }
     mesh.instanceMatrix.needsUpdate = true;
+    // One that came to rest is part of the floor the lava runs over from now on.
+    if (settledNow) layFloor();
   });
 
-  return <primitive object={parts.mesh} />;
+  return <primitive object={mirrored(parts.mesh)} />;
 }
 
 // Rapier loads its WebAssembly as the scene loads; until then there are simply no rolls. Stepped by hand (paused here),

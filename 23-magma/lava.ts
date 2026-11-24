@@ -83,6 +83,9 @@ export function createLava() {
   const cellList = new Int32Array(cells);
   // Whether a roll has poured since the last reset (the flow runs from then, as from a bite).
   let poured = false;
+  // The top of the settled pizza rolls over each cell of the open plate (0 where there is none): the floor there, so the
+  // filling runs out over a roll, off it and over the next, down to the plate, never under them.
+  const rollTop = new Float32Array(cells);
 
   for (let j = 0; j < N; j++) {
     for (let i = 0; i < N; i++) {
@@ -154,6 +157,7 @@ export function createLava() {
     reset,
     bite,
     pour,
+    rolls,
     step,
     sample,
     hotCell,
@@ -238,10 +242,59 @@ export function createLava() {
     lava.budget += lava.bites.length === 1 ? 0.01 : 0.008;
   }
 
-  // A bitten roll's filling: poured onto the open plate where it lies. Nothing pours onto the pocket, the rim or off the
-  // plate.
-  // A roll lying on the rim's slope, on the pocket or on another roll has no flat plate under its mouth: the filling
-  // comes out at the nearest flat plate toward the middle instead (otherwise it simply never showed).
+  // Where the settled rolls lie, as points over their surfaces (x, y, z in the world, `count` of them): the floor of the
+  // open plate is raised to the highest under each cell.
+  function rolls(points: ArrayLike<number>, count: number) {
+    rollTop.fill(0);
+    for (let n = 0; n < count; n++) {
+      const i = Math.floor((points[n * 3] + SPAN) / DX);
+      const j = Math.floor((points[n * 3 + 2] + SPAN) / DX);
+      if (i < 0 || j < 0 || i >= N || j >= N) continue;
+      const k = j * N + i;
+      rollTop[k] = Math.max(rollTop[k], points[n * 3 + 1]);
+    }
+    // Softened twice over the cells round the rolls, a 1-2-1 each way: a gap a cell wide between two rolls side by side,
+    // or a cell the points missed, would stand as a slot the lava fills and draws as a comb of walls; the edges come out
+    // a little rounded, as a roll's are.
+    for (let pass = 0; pass < 2; pass++) {
+      blur.set(rollTop);
+      for (let j = 1; j < N - 1; j++)
+        for (let i = 1; i < N - 1; i++) {
+          const k = j * N + i;
+          let near = 0;
+          for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) near = Math.max(near, blur[k + dj * N + di]);
+          if (near === 0) continue;
+          let sum = 0;
+          for (let dj = -1; dj <= 1; dj++)
+            for (let di = -1; di <= 1; di++) {
+              const w = (di === 0 ? 2 : 1) * (dj === 0 ? 2 : 1);
+              sum += Math.max(plate[k + dj * N + di], blur[k + dj * N + di]) * w;
+            }
+          rollTop[k] = Math.max(rollTop[k] * 0.6, sum / 16);
+        }
+    }
+    let changed = false;
+    for (let k = 0; k < cells; k++) {
+      if (kind[k] !== 0 || off[k]) continue;
+      const next = Math.max(plate[k], rollTop[k]);
+      if (next === base[k]) continue;
+      // Raised under lava, the lava there is pushed aside (it never stands higher than it did); lowered (half a roll
+      // bitten away), what lies there settles with the floor. Never more lava than there was: a floor dropped out
+      // from under a kept surface would fill with cold lava from nowhere.
+      if (next > base[k]) depth[k] = Math.max(0, depth[k] - (next - base[k]));
+      base[k] = next;
+      floor[k * 4] = next;
+      changed = true;
+    }
+    if (!changed) return;
+    baseTexture.needsUpdate = true;
+    upload(true);
+  }
+
+  // A bitten roll's filling, let out at its open end onto whatever is under it there: the plate, or another roll (and
+  // from there it runs on down). Nothing pours onto the pocket, the rim's slope or off the plate: a roll lying on the
+  // rim or the pocket has the filling come out at the nearest open floor toward the middle instead (otherwise it simply
+  // never showed).
   function pour(x: number, z: number, volume: number, rate: number, r: number) {
     if (!(volume > 0) || !(rate > 0)) return;
     const reach = Math.hypot(x, z);
@@ -269,8 +322,9 @@ export function createLava() {
       for (let i = Math.max(2, ci - reach); i <= Math.min(N - 3, ci + reach); i++) {
         const k = j * N + i;
         const [x, z] = centre(i, j);
-        // Only on the plate's flat floor: poured up on the rim's slope it ran over the edge and through the plate's wall.
-        if (kind[k] === 0 && !solid[k] && plate[k] < 0.003 && Math.hypot(x - p.x, z - p.z) <= p.r) each(k);
+        // Only on the plate's flat floor, or a roll on it: poured up on the rim's slope it ran over the edge and through
+        // the plate's wall.
+        if (kind[k] === 0 && !solid[k] && (plate[k] < 0.003 || rollTop[k] > plate[k]) && Math.hypot(x - p.x, z - p.z) <= p.r) each(k);
       }
   }
 

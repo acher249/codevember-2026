@@ -28,7 +28,7 @@ Run it locally with `npm run dev` from the repo root, then open <http://localhos
 ### Pizza rolls
 
 - Rapier bodies, each a small hull of the pillow shape, fall onto a trimesh of the plate and a hull of the pocket, then freeze.
-- A bite cuts the roll away in the shader and swaps in a half hull; its filling joins the lava flow as a source on the plate.
+- Settled rolls are raised into the lava's floor, so a bitten one's filling runs from its cut over the rolls below and down to the plate.
 
 ### Plate, crumbs and counter
 

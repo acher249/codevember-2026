@@ -25,6 +25,7 @@ import { hubState, placeActions, resetView, setMoving } from "../hub/state";
 import { SKY_LAYER, skyColour, unfold, type Palette } from "./kit";
 import { hover as showHover, pageSheet, place, shown } from "./mirror";
 import { cardMove, movePace, transition, type CardPose, type Transition } from "./transitions";
+import { prefaceState } from "../preface";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
 
@@ -254,8 +255,9 @@ export function Unfold({ layout, month, rest, landing, look, palette, children }
     r.still = stillness();
     const back = returnState().phase === "crossing" && unfold.lastView === "3d";
     r.morph = back ? 1 : 0;
-    // The page rises into view once the loader has gone, not behind it.
-    r.introAt = returnState().phase === "crossing" ? -100 : Infinity;
+    // The page rises into view once the loader has gone, not behind it; and not at all under the plain page (HubPage.tsx),
+    // which it takes over from at rest.
+    r.introAt = returnState().phase === "crossing" || prefaceState().up ? -100 : Infinity;
     resetView(back ? "3d" : "2d");
     setLook(back ? worldLook : PAGE_LOOK);
     // Drawn straight to the screen at rest, the page goes through the renderer's own tone mapping, which must leave it as

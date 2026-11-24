@@ -9,7 +9,7 @@ import { Hud } from "@/shared/ui/Hud";
 import "@/shared/engine/instancing";
 import { LOAD_ORDER, type LoadStep } from "@/shared/ui/Loader";
 import { CameraRig, GrabProvider, useGrabRegistry } from "@/shared/engine/controls";
-import { Post } from "@/shared/engine/Post";
+import { Post, postBypass, postPasses } from "@/shared/engine/Post";
 import { Extents } from "@/shared/engine/extents";
 import { Hover } from "@/shared/engine/hover";
 import { withRetries } from "@/shared/engine/retry";
@@ -20,7 +20,9 @@ import { SettingsProvider, useCreateSettings } from "@/shared/engine/settings";
 // The days call the site Stage's useLook, so the hub has to provide that same context.
 import { LookContext } from "@/shared/engine/Stage";
 import { markLost, noteAdapter, scarce, startLow } from "./budget";
+import { judged, keptUp, tooSlowAt } from "./judged";
 import { HubFallback } from "./HubFallback";
+import { setPrefaceFailed, usePreface } from "./preface";
 import { ReturnRig } from "./ReturnRig";
 import { loadSpace } from "./spaces/loaders";
 import { SpaceHud } from "./spaces/SpaceHud";
@@ -91,6 +93,19 @@ function buildInBackground(gl: THREE.WebGPURenderer, count: { pending: number; l
   };
 }
 
+// Builds the scene's shaders as the frames will draw it: through the pass that draws the scene (Post.tsx), into its own
+// render target with its extra outputs, since a shader built for the bare screen is a different shader and the first
+// frame would build every one again. Straight to the screen where a scene draws there. The passes that draw only a layer
+// or two (haze, the overlay's light in the air) hold a few things, and build them in the first frames as before. The build
+// pauses for a frame now and then with the pass's target and outputs still set on the renderer, so the scene's own
+// frames are held meanwhile (SceneWarmup): anything a scene draws for itself would be drawn into them, and built wrong.
+const passesToBuild = () => (postBypass.current ? [] : postPasses.current.filter((pass) => !pass._layers));
+async function precompile(gl: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.Camera) {
+  const passes = passesToBuild();
+  if (!passes.length) return gl.compileAsync(scene, camera);
+  for (const pass of passes) await pass.compileAsync(gl);
+}
+
 // Where the camera starts: a day's own view for phones, on a narrow screen, if it has one.
 function startingView(camera: DayDefinition["camera"]) {
   const narrow = typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
@@ -100,13 +115,13 @@ function startingView(camera: DayDefinition["camera"]) {
 
 // Before the scene is shown, while the loader still covers it, the frame rate is judged once: a scene too slow for its
 // tier on Auto steps down here, unseen, rather than a few seconds after it appears, where rebuilding its passes (and
-// often the scene) shows as a stall and a flash.
-const PROBE = 1200;
+// often the scene) shows as a stall and a flash. A day this device kept up with before is not timed again (judged.ts).
+const PROBE = 800;
 // With room to spare: once shown, the page has a little more to draw, and a step down then is what this is here to avoid.
 const SLOW = 48;
-type Judge = { stepDown: (() => void) | null };
+type Judge = { stepDown: (() => void) | null; skip: boolean; verdict: (keeps: boolean) => void };
 
-function SceneWarmup({ phase, onCompiling, onReady, judge }: { phase: RefObject<RenderPhase>; onCompiling: () => void; onReady: () => void; judge: RefObject<Judge> }) {
+function SceneWarmup({ phase, onCompiling, onReady, judge, hold }: { phase: RefObject<RenderPhase>; onCompiling: () => void; onReady: () => void; judge: RefObject<Judge>; hold: (held: boolean) => void }) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const size = useThree((state) => state.size);
   const scene = useThree((state) => state.scene);
@@ -121,6 +136,9 @@ function SceneWarmup({ phase, onCompiling, onReady, judge }: { phase: RefObject<
     onCompiling();
     const shaders = compiling.current;
     shaders.release = buildInBackground(gl, shaders);
+    // The scene's frames held while its shaders are built through the scene pass (precompile), from before the first.
+    const held = passesToBuild().length > 0;
+    if (held) hold(true);
     // Let the loader paint its new step before starting.
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(async () => {
@@ -135,10 +153,12 @@ function SceneWarmup({ phase, onCompiling, onReady, judge }: { phase: RefObject<
         });
         try {
           // A phone's driver can leave a compile hanging. Give up waiting after a while; the first frames build the rest.
-          await Promise.race([gl.compileAsync(scene, camera), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
+          await Promise.race([precompile(gl, scene, camera), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
         } catch (error) {
           // The first frame compiles whatever is left, as before.
           console.warn(error);
+        } finally {
+          if (held) hold(false);
         }
         for (const object of hidden) object.visible = false;
         if (cancelled) return;
@@ -152,6 +172,7 @@ function SceneWarmup({ phase, onCompiling, onReady, judge }: { phase: RefObject<
       cancelled = true;
       cancelAnimationFrame(frame);
       shaders.release();
+      if (held) hold(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -195,7 +216,7 @@ function SceneWarmup({ phase, onCompiling, onReady, judge }: { phase: RefObject<
     if (!state.probeAt && !(overdue || state.smooth >= 4 || performance.now() - state.gpuDoneAt > 2500)) return;
     // Ready to show. On Auto, a moment's frames first, to see whether this tier keeps up.
     const stepDown = judge.current.stepDown;
-    if (!overdue && stepDown && state.steps < 2) {
+    if (!overdue && stepDown && !judge.current.skip && state.steps < 2) {
       const now = performance.now();
       if (!state.probeAt) {
         state.probeAt = now;
@@ -206,6 +227,7 @@ function SceneWarmup({ phase, onCompiling, onReady, judge }: { phase: RefObject<
       if (now - state.probeAt < PROBE) return;
       const fps = (state.probeFrames * 1000) / (now - state.probeAt);
       state.probeAt = 0;
+      judge.current.verdict(fps >= SLOW);
       if (fps < SLOW) {
         // A tier down, and back to waiting for whatever that has to build.
         state.steps += 1;
@@ -237,6 +259,8 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
   const [isWebGPU, setIsWebGPU] = useState(true);
   // Held here, not set on the renderer, because the canvas puts its dpr prop back whenever this component renders.
   const [dpr, setDpr] = useState(topDpr);
+  // The scene's frames, held while the warm-up builds its shaders through the passes.
+  const [held, setHeld] = useState(false);
   const fpsRef = useRef<HTMLElement | null>(null);
   const phase = scenePhase;
   const loadId = useRef(0);
@@ -251,9 +275,17 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
   // blur goes), so a second of timing it behind the loader only kept the visitor waiting. Auto still steps down later if
   // the calendar turns out far too slow.
   const floor = definition?.autoFloor ?? "low";
-  const judge = useRef<Judge>({ stepDown: null });
+  const judge = useRef<Judge>({ stepDown: null, skip: false, verdict: () => {} });
+  const judgedDay = loaded?.day?.day;
   judge.current.stepDown =
     choice === "auto" && isWebGPU && !!loaded?.day && TIER_RANK[tier] > TIER_RANK[floor] ? () => setAutoTier(tier === "high" ? "medium" : "low") : null;
+  judge.current.skip = judgedDay !== undefined && keptUp(judgedDay, tier);
+  judge.current.verdict = (keeps) => {
+    if (judgedDay !== undefined) judged(judgedDay, tier, keeps);
+  };
+  // For a day that was too slow at this tier before: where Auto stands now, read when the day arrives.
+  const autoNow = useRef({ choice, autoTier, isWebGPU });
+  autoNow.current = { choice, autoTier, isWebGPU };
   const settings = useCreateSettings(definition?.settings);
 
   const [lookPatch, setLookPatch] = useState<Partial<Look>>({});
@@ -298,6 +330,13 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
         phase.current = "hold";
         loadId.current += 1;
         setLookPatch({});
+        // Too slow at this tier before: a tier down from the start, so its shaders are the only ones built.
+        const slow = day ? tooSlowAt(day.day) : null;
+        const now = autoNow.current;
+        const dayFloor = module.default.autoFloor ?? "low";
+        if (slow && now.choice === "auto" && now.isWebGPU && TIER_RANK[slow] <= TIER_RANK[now.autoTier] && TIER_RANK[slow] > TIER_RANK[dayFloor]) {
+          setAutoTier(slow === "high" ? "medium" : "low");
+        }
         setLoaded({ id: loadId.current, day, definition: module.default });
         advance("scene");
       })
@@ -310,7 +349,10 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day]);
 
-  // An error message has to be readable, so it takes the loader down with it. And it is counted, by kind.
+  // An error message has to be readable, so it takes the loader down with it. And it is counted, by kind. On the calendar
+  // the plain page stays up, its way into 3D closed.
+  const preface = usePreface();
+  useEffect(() => setPrefaceFailed(!!error && !day), [error, day]);
   useEffect(() => {
     if (!error) return;
     advance("done");
@@ -347,6 +389,7 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
         // three r185 folded the soft filter into PCF, which softens by each light's shadow.radius.
         shadows="percentage"
         dpr={dpr}
+        frameloop={held ? "never" : "always"}
         // Well past any sky dome plus the furthest the camera can get from it, or zooming out cuts a black hole in the sky.
         camera={{ fov: 36, near: 0.05, far: 400 }}
         // One at a time: R3F asks again on every render until the renderer is ready, and each ask would start another GPU
@@ -422,7 +465,7 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
                     <SceneBoundary key={loaded.day?.day ?? 0} onError={setError}>
                       <Suspense fallback={null}>
                         <definition.Scene />
-                        <SceneWarmup key={loaded.id} phase={phase} onCompiling={() => advance("shaders")} onReady={() => advance("done")} judge={judge} />
+                        <SceneWarmup key={loaded.id} phase={phase} onCompiling={() => advance("shaders")} onReady={() => advance("done")} judge={judge} hold={setHeld} />
                       </Suspense>
                     </SceneBoundary>
                   </>
@@ -435,7 +478,7 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
 
       {/* On the hub, a failure leaves the month as a plain page rather than an error screen. */}
       {error && !day ? (
-        <HubFallback failure={error} />
+        preface.up ? null : <HubFallback failure={error} />
       ) : error ? (
         <div className="cv-error" role="alert">
           <p>{error.message}</p>

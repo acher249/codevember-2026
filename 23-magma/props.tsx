@@ -1,7 +1,7 @@
 "use client";
 
 // The counter round the plate, so the pocket is not alone: a stack of folded newspapers (THE DAILY CRUST: "LOCAL MAN
-// BITES TOO SOON"), a sweating glass of milk, a quilted oven mitt singed at a fingertip, a folded paper towel under the
+// BITES TOO SOON"), a sweating glass of milk, a quilted oven mitt singed at a fingertip, two paper towels crossed under the
 // plate, a knife block and a cutting board, and behind it all the microwave it came out of, door ajar, its display
 // counting down and then blinking END. All placed off the plate (the lava never leaves it) and behind or beside the pocket, so the bitten end
 // stays clear from the start view. Built once at load (geometry, printed canvases); per frame only the lava's glow is
@@ -45,7 +45,7 @@ import { bump } from "./props/bump";
 import { GLASS, glassGeometry, milkGeometry } from "./props/glass";
 import { cuttingBoard, knifeBlock } from "./props/knives";
 import { ovenMitt } from "./props/mitt";
-import { foldedTowel, newspaperStack } from "./props/paper";
+import { foldedTowel, newspaperStack, towelLift } from "./props/paper";
 import { buildMicrowave, microwaveState } from "./props/microwave";
 import { newspaperPrint } from "./props/prints";
 import { BACKSPLASH_Z, COUNTER, MICROWAVE, PLATE_LIFT } from "./shape";
@@ -67,7 +67,9 @@ const PLACES = {
   glass: { x: 1.55, z: -0.75 },
   // The mitt's frame starts at its cuff; turned so its fingertips point in at the plate.
   mitt: { x: 2.05, z: -0.1, turn: -2.74 },
-  towel: { turn: 0.45 }
+  // Two paper towels, one across the other: the lower square to the plate's turn, the upper a little smaller and turned an
+  // eighth further, so the lower one's corners show between the upper one's.
+  towel: { turn: 0.45, cross: 0.45 + Math.PI / 4 + 0.08 }
 };
 
 // Where the eye may not go, so no orbit, zoom or flight puts it inside a prop: each a rectangle on the counter (centre,
@@ -218,12 +220,17 @@ function mittMaterial() {
   return m;
 }
 
-// Kitchen paper towel: white, an embossed dimple pattern, the fold creases across its middle, a faint orange spot.
-function towelMaterial() {
+// Kitchen paper towel: white, an embossed dimple pattern, the fold creases across its middle. The upper one (`printed`) a
+// diner napkin's: a thin red line printed round it a little in from its edge, and a faint orange spot.
+function towelMaterial(printed: boolean) {
   const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.95, metalness: 0 });
   const q = uv() as any;
-  const cell = vec2(q.x.mul(60).fract().sub(0.5), q.y.mul(56).fract().sub(0.5)) as any;
-  const dimple = float(1).sub(smoothstep(0.1, 0.42, cell.length())) as any;
+  // Embossed dots in offset rows, about 2 mm apart, some pressed deeper than others: a square grid of them read as a
+  // building-brick baseplate.
+  const row = q.y.mul(84).floor() as any;
+  const cell = vec2(q.x.mul(90).add(row.mul(0.5)).fract().sub(0.5), q.y.mul(84).fract().sub(0.5)) as any;
+  const depth = mx_noise_float(vec3(q.mul(14), 5)).mul(0.5).add(0.6) as any;
+  const dimple = float(1).sub(smoothstep(0.05, 0.45, cell.length())).mul(depth) as any;
   const crease = float(1)
     .sub(smoothstep(0.0, 0.006, abs(q.x.sub(0.5))))
     .max(float(1).sub(smoothstep(0.0, 0.006, abs(q.y.sub(0.5))))) as any;
@@ -238,8 +245,13 @@ function towelMaterial() {
     )
   ) as any;
   const tag = attribute("tag", "float") as any;
-  m.colorNode = mix(mix(vec3(0.95, 0.95, 0.94).mul(float(1).sub(crease.mul(0.08))), vec3(0.93, 0.62, 0.3), spot.mul(0.55)), vec3(0.9, 0.9, 0.88), tag) as any;
-  m.normalNode = bump(dimple.mul(0.0012).sub(crease.mul(0.001))) as any;
+  // How far in from the nearest edge, across the folded square (0 at the edge, 0.5 in the middle).
+  const edge = min(min(q.x, float(1).sub(q.x)), min(q.y, float(1).sub(q.y))) as any;
+  const line = printed ? (float(1).sub(smoothstep(0.0025, 0.005, abs(edge.sub(0.045)))) as any) : float(0);
+  const paper = printed ? vec3(0.95, 0.95, 0.94) : vec3(0.93, 0.92, 0.89);
+  const plain = mix(paper.mul(float(1).sub(crease.mul(0.08))), vec3(0.72, 0.13, 0.1), line.mul(0.85)) as any;
+  m.colorNode = mix(printed ? mix(plain, vec3(0.93, 0.62, 0.3), spot.mul(0.55)) : plain, vec3(0.9, 0.9, 0.88), tag) as any;
+  m.normalNode = bump(dimple.mul(0.0005).sub(crease.mul(0.001)).sub(line.mul(0.0003))) as any;
   return m;
 }
 
@@ -274,8 +286,22 @@ export function Props({ fine }: { fine: boolean }) {
     place(milkGeometry(fine), keep(milkMaterial()), PLACES.glass.x, COUNTER + 0.0003, PLACES.glass.z).name = "props-milk";
     place(ovenMitt(fine), keep(mittMaterial()), PLACES.mitt.x, COUNTER, PLACES.mitt.z, PLACES.mitt.turn).name = "props-mitt";
 
-    // The paper towel the plate stands on, exactly PLATE_LIFT thick.
-    place(foldedTowel(0.78, 0.7, PLATE_LIFT, fine), keep(towelMaterial()), 0, COUNTER, 0, PLACES.towel.turn).name = "props-towel";
+    // The two paper towels the plate stands on, each half of PLATE_LIFT: the upper drapes over the lower (the lower's top,
+    // in the upper's frame, turned into the lower's) and down off its edges to the counter.
+    const ply = PLATE_LIFT / 2;
+    const LOWER = { w: 0.78, d: 0.7 };
+    place(foldedTowel(LOWER.w, LOWER.d, ply, fine), keep(towelMaterial(false)), 0, COUNTER, 0, PLACES.towel.turn).name = "props-towel";
+    const lowerLift = towelLift();
+    const turn = PLACES.towel.cross - PLACES.towel.turn;
+    const under = (x: number, z: number) => {
+      const lx = x * Math.cos(turn) + z * Math.sin(turn);
+      const lz = -x * Math.sin(turn) + z * Math.cos(turn);
+      // How far inside the lower towel's edge (negative outside); the paper bends down over the last 1.5 cm past it.
+      const inside = Math.min(LOWER.w / 2 - Math.abs(lx), LOWER.d / 2 - Math.abs(lz));
+      const t = Math.min(1, Math.max(0, (inside + 0.06) / 0.06));
+      return -ply + (lowerLift(lx, lz) + ply) * t * t * (3 - 2 * t);
+    };
+    place(foldedTowel(0.7, 0.66, ply, fine, { seed: 7.3, under }), keep(towelMaterial(true)), 0, COUNTER + ply, 0, PLACES.towel.cross).name = "props-towel-top";
 
     // The knife block and the cutting board, right of the microwave.
     for (const t of [oakColour, oakNormal, oakRough]) {

@@ -212,9 +212,17 @@ function Control({ name, setting, store }: { name: string; setting: Setting; sto
   const ratchet = useRef({ notch: NaN, at: 0 });
 
   if (setting.type === "action") {
+    const busy = !!setting.busyLabel && value === true;
     return (
-      <button type="button" className="cv-action" onClick={() => store.trigger(name)}>
-        {setting.label}
+      <button type="button" className="cv-action" disabled={busy} aria-busy={busy} onClick={() => store.trigger(name)}>
+        {busy ? (
+          <>
+            <i className="cv-spinner" aria-hidden="true" />
+            {setting.busyLabel}
+          </>
+        ) : (
+          setting.label
+        )}
       </button>
     );
   }
@@ -349,9 +357,17 @@ function PhonePill({ name, setting, store }: { name: string; setting: Setting; s
     );
   }
   if (setting.type === "action") {
+    const busy = !!setting.busyLabel && value === true;
     return (
-      <button type="button" className="cv-pill" onClick={() => store.trigger(name)}>
-        {setting.label}
+      <button type="button" className="cv-pill cv-pill-busy-able" disabled={busy} aria-busy={busy} onClick={() => store.trigger(name)}>
+        {busy ? (
+          <>
+            <i className="cv-spinner" aria-hidden="true" />
+            {setting.busyLabel}
+          </>
+        ) : (
+          setting.label
+        )}
       </button>
     );
   }

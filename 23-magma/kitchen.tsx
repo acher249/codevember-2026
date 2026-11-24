@@ -51,7 +51,7 @@ import { useDispose } from "../shared/engine/dispose";
 import { focusDistance, OVERLAY_LAYER, overlayLink } from "../shared/engine/Post";
 import { lehmer } from "../shared/engine/random";
 import { loadRetried, suspendRetried } from "../shared/engine/retry";
-import { BACKSPLASH_Z, COUNTER } from "./shape";
+import { BACKSPLASH_Z, COUNTER, MIRROR_LAYER } from "./shape";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
 
@@ -132,7 +132,7 @@ function marble(colour: THREE.Texture, rough: THREE.Texture, mirror: any) {
   return m;
 }
 
-export function Kitchen({ mirror = false }: { mirror?: boolean }) {
+export function Kitchen({ mirror = false, sharp = false }: { mirror?: boolean; sharp?: boolean }) {
   // Loaded with retries, so one dropped request never stops the day.
   const urls = [...OAK, ...MARBLE];
   const [diffuse, normal, rough, stone, stoneRough] = suspendRetried(() => Promise.all(urls.map((url) => loadRetried(new THREE.TextureLoader(), url))), ["magma-kitchen", ...urls]);
@@ -446,28 +446,37 @@ export function Kitchen({ mirror = false }: { mirror?: boolean }) {
     // Light: the sky's fill does most of it; the sun through the left window lays it across the table, with soft
     // shadows from the window bars.
     // Contrast as in a sunny room: a cooler, weaker fill in the shade, a warm strong sun.
-    group.add(new THREE.HemisphereLight("#dfe7f2", "#c9b9a6", 0.8));
-    const sun = new THREE.DirectionalLight("#ffdcae", 3.6);
+    group.add(new THREE.HemisphereLight("#dfe7f2", "#c9b9a6", 0.45));
+    const sun = new THREE.DirectionalLight("#ffdcae", 4.6);
     sun.position.set(...SUN);
     sun.target.position.set(0, 0, -0.5);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    // Its shadows only over what the view can hold, the plate and the counter round it, about 3 m across: over 18 m (as
+    // it was) a texel was 9 mm, coarser than a pizza roll's edge, and the rolls and the pocket barely shaded the plate.
+    // Now about a millimetre (sharp: 4096 on High), and a contact shadow under everything that lies on the plate.
+    sun.shadow.mapSize.set(sharp ? 4096 : 2048, sharp ? 4096 : 2048);
     const c = sun.shadow.camera;
-    c.left = c.bottom = -9;
-    c.right = c.top = 9;
+    c.left = c.bottom = -1.5;
+    c.right = c.top = 1.5;
     c.near = 1;
     c.far = 50;
-    sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.01;
-    sun.shadow.radius = 6;
+    sun.shadow.bias = -0.0003;
+    sun.shadow.normalBias = 0.002;
+    sun.shadow.radius = 5;
     group.add(sun, sun.target);
     // The lava's own light: placed and brightened each frame.
     const lava = new THREE.PointLight(new THREE.Color("#ffa24a"), 0, 2, 2);
     lava.name = "lava-light";
     group.add(lava);
-    return { group, geometries, materials };
-  }, [diffuse, normal, rough, stone, stoneRough, mirror]);
+    return { group, geometries, materials, reflection };
+  }, [diffuse, normal, rough, stone, stoneRough, mirror, sharp]);
   useDispose(...parts.geometries, ...parts.materials);
+  // The mirror's camera sees only the plate and what is on it (MIRROR_LAYER).
+  const camera = useThree((state) => state.camera);
+  useEffect(() => {
+    if (!parts.reflection) return;
+    parts.reflection.reflector.getVirtualCamera(camera).layers.set(MIRROR_LAYER);
+  }, [parts, camera]);
 
   // The room's own light for everything to reflect: the kitchen captured once into a cube from just over the plate,
   // blurred into a PMREM, when it mounts. Only the room: the pocket, the plate and the lava are left out of the capture.
@@ -480,7 +489,7 @@ export function Kitchen({ mirror = false }: { mirror?: boolean }) {
     const target = generator.fromScene(room, 0.01, 0.1, 40, { size: 256, position: new THREE.Vector3(0, COUNTER + 0.9, 0.3) } as any);
     parent.add(parts.group);
     scene.environment = target.texture;
-    scene.environmentIntensity = 0.55;
+    scene.environmentIntensity = 0.4;
     (window as any).__magmaEnv = target;
     return () => {
       if (scene.environment === target.texture) scene.environment = null;

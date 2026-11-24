@@ -43,7 +43,7 @@ import { useQuality } from "../shared/engine/quality";
 import { lehmer } from "../shared/engine/random";
 import { useFire } from "./fire";
 import type { Lava } from "./lava";
-import { COUNTER, FLAT, outline, PLATE, plateHeight, pocketToWorld, toPocket } from "./shape";
+import { COUNTER, FLAT, mirrored, outline, PLATE, plateHeight, pocketToWorld, toPocket } from "./shape";
 import { catchFire, crackle } from "./sound";
 import { clock } from "./time";
 
@@ -572,7 +572,7 @@ export function PlateCrumbs({ lava, fine, onIgnite }: { lava: Lava; fine: boolea
 
   return (
     <>
-      <primitive object={parts.mesh} />
+      <primitive object={mirrored(parts.mesh)} />
       <primitive object={fire.group} />
     </>
   );

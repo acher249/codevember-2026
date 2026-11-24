@@ -37,6 +37,9 @@ export type ChoiceSetting = {
 export type ActionSetting = {
   type: "action";
   label: string;
+  // Said instead, with a spinner and the button held, while the scene sets this action's value to true (an action that
+  // takes a while, such as microwaving). Without it, the button is always its label.
+  busyLabel?: string;
 };
 
 // Any colour, picked off a gradient pad (hue across, pale to vivid to dark down), with a row of preset chips. The value

@@ -795,6 +795,28 @@ body {
   transform: scale(0.985);
 }
 
+/* An action at work (its busyLabel): a spinner beside the words, the button held. */
+.cv-action[aria-busy="true"],
+.cv-pill[aria-busy="true"] {
+  gap: 8px;
+  cursor: default;
+}
+
+.cv-action[aria-busy="true"] {
+  filter: none;
+  transform: none;
+}
+
+.cv-pill[aria-busy="true"] {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cv-action .cv-spinner {
+  border-color: rgba(8, 9, 12, 0.25);
+  border-top-color: #08090c;
+}
+
 .cv-reset {
   border-color: transparent;
   min-height: 28px;

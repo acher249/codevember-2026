@@ -57,6 +57,9 @@ export const postBypass = { current: false };
 // A scene with nothing changing on screen can ask for no frame at all: the last one stays up, and the GPU rests. Off unless
 // a scene sets it, and that scene clears it when it goes.
 export const postRest = { current: false };
+// The passes that draw the scene (the scene itself, and its haze and overlay layers), for the warm-up to build their
+// shaders ahead of the first frame, with the very render targets and outputs the frames will draw into (HubStage.tsx).
+export const postPasses: { current: any[] } = { current: [] };
 // A scene resting on something flat, such as a page, can ask for it untouched: no depth of field and no edge smoothing, so
 // that its text comes out texel for pixel. Off unless a scene sets it, and that scene clears it when it goes. Between 0 and
 // 1, the two are mixed, for easing from one to the other.
@@ -369,6 +372,13 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
     if (hazeDepth) hazeLink.setDepth(hazeDepth);
     if (sceneDepth) overlayLink.setDepth(sceneDepth);
   }, [hazeDepth, sceneDepth]);
+
+  useEffect(() => {
+    postPasses.current = [...passNodes(stack.outputNode)].filter((node) => node.isPassNode);
+    return () => {
+      postPasses.current = [];
+    };
+  }, [stack]);
 
   // The stack's own dispose frees only its last quad. The passes in it hold their render targets (several full-screen
   // textures) until each is disposed, so every move to another day or tier used to leave the last one's on the GPU: 30 to

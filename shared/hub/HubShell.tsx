@@ -8,6 +8,7 @@ import { withRetries } from "@/shared/engine/retry";
 import { Loader, type LoadStep } from "@/shared/ui/Loader";
 import { CrashScreen } from "@/shared/ui/Shell";
 import { makePortal } from "./portal";
+import { setPrefaceStep } from "./preface";
 import { finishReturn, requestReturn, returnState, useReturnState } from "./returning";
 
 const HubStage = dynamic(() => withRetries(() => import("./HubStage")), { ssr: false });
@@ -28,7 +29,8 @@ export function HubShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const day = dayFromHubPath(pathname);
   const [step, setStep] = useState<LoadStep>("engine");
-  const arriving = useReturnState().phase === "crossing";
+  // The calendar page as plain HTML (HubPage.tsx) shows the stage's progress on its way into 3D.
+  useEffect(() => setPrefaceStep(step), [step]);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -82,8 +84,9 @@ export function HubShell({ children }: { children: React.ReactNode }) {
     <CrashScreen>
       {children}
       <HubStage day={day} onStep={setStep} />
-      {/* Back from a day, its last frame covers the hub coming up instead. */}
-      {day || !arriving ? <Loader day={day ?? undefined} step={step} /> : null}
+      {/* Only for a day: the calendar is up as plain HTML at once (HubPage.tsx), and back from a day, that day's last frame
+      covers the hub coming up. */}
+      {day ? <Loader day={day} step={step} /> : null}
       <HeldFrame />
     </CrashScreen>
   );

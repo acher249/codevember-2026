@@ -7,8 +7,8 @@ export const PLATE = 0.46;
 export const FLAT = 0.34;
 // A deep paper plate's rim, about 2.5 cm high: high enough for the sleeve to rest its back end on.
 export const RIM = 0.1;
-// A folded paper towel under the plate, 1.5 mm thick: the plate (its underside at -0.0024) rests on it, and it on the
-// counter. The plate, the pocket, the lava and the crumbs keep their heights; the counter is lowered by the towel.
+// Two paper towels crossed under the plate, 1.5 mm thick together: the plate (its underside at -0.0024) rests on them,
+// and they on the counter. The plate, the pocket, the lava and the crumbs keep their heights; the counter is lowered by the towels.
 export const PLATE_LIFT = 0.006;
 // The kitchen counter's top, along the wall behind.
 export const COUNTER = -0.0024 - PLATE_LIFT;
@@ -231,3 +231,11 @@ function solveRest() {
 }
 export const REST: { tilt: number; lift: number } = { tilt: 0, lift: 0 };
 Object.assign(REST, solveRest());
+
+// What the counter's mirror (High) draws: only the plate and what is on it. The room comes into the marble from the
+// captured cube; drawn again in the mirror, every material in the kitchen compiled a second time at load.
+export const MIRROR_LAYER = 7;
+export function mirrored<T extends { traverse: (each: (o: { layers: { enable: (layer: number) => void } }) => void) => void }>(object: T) {
+  object.traverse((o) => o.layers.enable(MIRROR_LAYER));
+  return object;
+}

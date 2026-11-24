@@ -1,5 +1,5 @@
-// Magma's own sounds, synthesised: the microwave's ding, the crunch of a bite, the lava's sizzle and slow plops. Each is
-// a one-shot through the engine (so it waits for audio to wake, and respects mute).
+// Magma's own sounds: the microwave's ding, the crunch of a bite (recorded where the file is present), the lava's sizzle
+// and slow plops. Each is a one-shot through the engine (so it waits for audio to wake, and respects mute).
 
 import { sound } from "../shared/engine/sound";
 
@@ -64,8 +64,32 @@ export function ding(strikes = 3, gap = 0.55) {
   });
 }
 
-// A bite through crisp pastry: a dozen dry crackles over a sixth of a second, and a soft thud of the jaw.
+// A recorded bite (ElevenLabs), licensed to this site only. Where the file is absent (the open-source copy has no
+// audio) the bite falls back to the synthesised crunch below.
+const BITE = "/assets/23-magma/bite.mp3";
+let recorded: boolean | undefined;
+
+// Fetches the recorded bite at load, so the first bite plays on time, and notes whether it is there.
+export function preloadBite() {
+  if (recorded !== undefined) return;
+  recorded = false;
+  sound.preload(BITE);
+  void fetch(BITE, { method: "HEAD" })
+    .then((answer) => (recorded = answer.ok))
+    .catch(() => undefined);
+}
+
+// A bite through crisp pastry.
 export function crunch() {
+  if (recorded) {
+    sound.sample(BITE, 0.9);
+    return;
+  }
+  synthCrunch();
+}
+
+// A dozen dry crackles over a sixth of a second, and a soft thud of the jaw.
+function synthCrunch() {
   sound.custom((context, out, at) => {
     for (let i = 0; i < 14; i++) {
       const t = at + Math.pow(Math.random(), 1.3) * 0.17;

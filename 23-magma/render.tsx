@@ -67,7 +67,7 @@ import { N, SPAN } from "./lava";
 import { type Crust, RELIEF } from "./crust";
 import { buildPocket } from "./pocket";
 import { sleevePrint, TOP_FROM, TOP_TO } from "./print";
-import { BREAD, FLAT, LIP, MAX_BITES, PLATE, POCKET, REST, RIM, SHELL, SLEEVE, sleeveProfile, TEETH } from "./shape";
+import { mirrored, BREAD, FLAT, LIP, MAX_BITES, PLATE, POCKET, REST, RIM, SHELL, SLEEVE, sleeveProfile, TEETH } from "./shape";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- TSL's node types do not model every operator. */
 
@@ -178,7 +178,7 @@ const biteDistance = (p: any, y: any = float(0.02)) => {
 
 // Glowing rock by its temperature (0 cold to 1 white hot): dull red, orange, yellow, then near white, brightening as the
 // fourth power, as hot things do.
-const incandescence = (t: any) => {
+export const incandescence = (t: any) => {
   const g = mix(float(0.03), float(0.62), smoothstep(0.4, 1, t)) as any;
   const b = mix(float(0), float(0.24), smoothstep(0.88, 1, t)) as any;
   return vec3(1, g, b).mul(pow(clamp(t, 0, 1), 3).mul(3.2)) as any;
@@ -254,7 +254,7 @@ export function Plate({ lava }: { lava: Lava }) {
     return { geometry, material, mesh };
   }, [lava]);
   useDispose(parts.geometry, parts.material);
-  return <primitive object={parts.mesh} />;
+  return <primitive object={mirrored(parts.mesh)} />;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -502,7 +502,7 @@ export function Pocket({ crust, fine }: { crust: Crust; fine: boolean }) {
     return { group, geometry, material, sleeve, sleeveMaterial, print, mesh, wallGeometry, wallMaterials };
   }, [crust, fine]);
   useDispose(parts.geometry, parts.material, parts.sleeve, ...parts.sleeveMaterial, parts.print, parts.wallGeometry, ...parts.wallMaterials);
-  return <primitive object={parts.group} name="pocket" />;
+  return <primitive object={mirrored(parts.group)} name="pocket" />;
 }
 
 // The sleeve: real paperboard, half a millimetre thick, folded round the pocket. Its outline (shape.ts) is carried along
@@ -694,7 +694,9 @@ export function LavaSurface({ lava, fine }: { lava: Lava; fine: boolean }) {
     // coolest patches, split by glowing cracks.
     const cooled = smoothstep(0.5, 0.22, t.add(mx_noise_float(vec3(p.mul(30), 4)).mul(0.08))).mul(0.85) as any;
     const thinEdge = smoothstep(0.003, 0.0009, vh).mul(smoothstep(0.85, 0.5, t)) as any;
-    const crusted = max(cooled, thinEdge.mul(0.25)) as any;
+    // Cold through: the skin goes on darkening, from a brown-red crust to near-black rock.
+    const cold = smoothstep(0.2, 0.03, t) as any;
+    const crusted = max(cooled.add(cold.mul(0.13)), thinEdge.mul(0.25)) as any;
     // Ropes stand on the molten surface too (pahoehoe), sharper as the skin stiffens; only where it is moving.
     const wrinkle = float(0.2)
       .add(crusted.mul(0.3))
@@ -736,8 +738,13 @@ export function LavaSurface({ lava, fine }: { lava: Lava; fine: boolean }) {
       const t = clamp(r.sub(FLAT).div(PLATE - FLAT), 0, 1) as any;
       const plateTop = t.mul(t).mul(float(1.6).sub(t.mul(0.6))).mul(RIM) as any;
       If(outlineDepth(local.xz).lessThan(-0.004).and(positionWorld.y.lessThan(plateTop.sub(0.0004))), () => Discard());
-      // Fresh skin: dark grey-brown glassy rock, a little lighter on the crests of the ropes.
-      const basalt = vec3(0.2, 0.075, 0.03).add(rope.mul(0.008)).mul(n.mul(0.3).add(0.85)) as any;
+      // Nor as a curtain: down the side of a pizza roll the floor drops several centimetres in a cell or two, and the lava
+      // on top joined to the pool below by a sheet hung there, toothed cell by cell. Out on the plate nothing else is so
+      // steep: the lava shows on the roll and round its foot, the roll's own side between.
+      If(outlineDepth(local.xz).lessThan(-0.004).and(worldNormal.y.lessThan(0.42)), () => Discard());
+      // Fresh skin: a dark red-brown crust, then as it goes cold, near-black glassy rock; a little lighter on the crests
+      // of the ropes.
+      const basalt = mix(vec3(0.13, 0.05, 0.025), vec3(0.032, 0.028, 0.026), cold).add(rope.mul(0.008)).mul(n.mul(0.3).add(0.85)) as any;
       const molten = vec3(0.3, 0.06, 0.015) as any;
       const filling = mix(mix(vec3(0.3, 0.07, 0.02), vec3(0.5, 0.32, 0.08), cheese), vec3(0.22, 0.04, 0.02), pepperoni) as any;
       return mix(mix(molten, basalt, crusted), filling, fillingLook);
@@ -745,7 +752,7 @@ export function LavaSurface({ lava, fine }: { lava: Lava; fine: boolean }) {
     // Wet and glossy where molten, a satin skin where cooled.
     // A thin wet sheen right at the contact with the plate.
     const contact = smoothstep(0.003, 0.0008, vh) as any;
-    material.roughnessNode = mix(mix(float(0.1), float(0.5), crusted), float(0.06), contact).add(rope.mul(0.03));
+    material.roughnessNode = mix(mix(float(0.1), mix(float(0.5), float(0.62), cold), crusted), float(0.06), contact).add(rope.mul(0.03));
     const open = float(1).sub(crusted) as any;
     // The cracks glow from the hotter lava under the skin, the deeper the hotter.
     const under = clamp(t.add(0.3).add(vh.mul(3)), 0, 0.85) as any;
@@ -779,11 +786,11 @@ export function LavaSurface({ lava, fine }: { lava: Lava; fine: boolean }) {
     return { geometry, material, mesh };
   }, [lava]);
   useDispose(parts.geometry, parts.material);
-  return <primitive object={parts.mesh} name="lava-mesh" />;
+  return <primitive object={mirrored(parts.mesh)} name="lava-mesh" />;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Crumbs knocked off by a bite: little flakes of pastry that fall, bounce and settle on the plate or the lava.
+// Crumbs knocked off by a bite, or by a roll landing: little flakes of pastry that fall, bounce and settle on the plate or the lava.
 
 export type Crumbs = {
   mesh: THREE.InstancedMesh;
@@ -794,7 +801,8 @@ export type Crumbs = {
 
 export function useCrumbs(): Crumbs {
   return useMemo(() => {
-    const COUNT = 64;
+    // Room for a bite's and a batch of rolls' landing (two to four each) at once.
+    const COUNT = 128;
     const geometry = new THREE.IcosahedronGeometry(1, 0).scale(1, 0.55, 0.8);
     const material = new THREE.MeshStandardNodeMaterial({ roughness: 0.8 });
     const shade = attribute("aShade", "float") as any;

@@ -139,17 +139,22 @@ export function newspaperStack(fine: boolean) {
   return { geometry: g, height: y };
 }
 
-// A kitchen paper towel folded in four under the plate: `thick` from the counter up, flat where the plate's floor rests
-// on it, its corners outside the plate lifting a few millimetres as folded paper does. Its edges a strip all round.
-// uv across the folded square; tag 1 on the edges.
-export function foldedTowel(w: number, d: number, thick: number, fine: boolean) {
-  const n = fine ? 48 : 20;
-  const lift = (x: number, z: number) => {
+// A kitchen paper towel folded in four under the plate: `thick` from what is under it up, flat where the plate's floor
+// rests on it, its corners outside the plate lifting a few millimetres as folded paper does. Its edges a strip all round.
+// `seed` varies its corners' waves; `under` is the height, over the towel's own base, of whatever it lies on (another
+// towel under it), so it drapes over that and down off its edge. uv across the folded square; tag 1 on the edges.
+export function towelLift(seed = 0) {
+  return (x: number, z: number) => {
     const r = Math.hypot(x, z);
     const out = Math.max(0, r - 0.4);
-    return out * out * 0.12 + Math.max(0, r - 0.36) * 0.006 * (0.5 + 0.5 * noise2(x * 9, z * 9));
+    return out * out * 0.12 + Math.max(0, r - 0.36) * 0.006 * (0.5 + 0.5 * noise2(x * 9 + seed, z * 9 - seed));
   };
-  const top = (x: number, z: number) => thick + lift(x, z);
+}
+export function foldedTowel(w: number, d: number, thick: number, fine: boolean, { seed = 0, under = () => 0 }: { seed?: number; under?: (x: number, z: number) => number } = {}) {
+  const n = fine ? 48 : 20;
+  const own = towelLift(seed);
+  const lift = (x: number, z: number) => under(x, z) + own(x, z) * 0.9;
+  const top = (x: number, z: number) => thick + under(x, z) + own(x, z);
   const parts = [
     surface(
       n,

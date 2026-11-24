@@ -9,8 +9,8 @@ import { focusBlur, focusDistance, postBypass } from "../shared/engine/Post";
 import { dismissPrompt, resetPrompt } from "../shared/engine/prompt";
 import { scenePhase, useQuality } from "../shared/engine/quality";
 import { lehmer } from "../shared/engine/random";
-import { useSettingAction, useSettingRef } from "../shared/engine/settings";
-import { useBed } from "../shared/engine/sound";
+import { useSettingAction, useSettingRef, useSettingsStore } from "../shared/engine/settings";
+import { useBed, useMusic } from "../shared/engine/sound";
 import type { DayDefinition } from "../shared/engine/types";
 import { followPrompt } from "../shared/ui/Follow";
 import { shareResult } from "../shared/ui/Share";
@@ -24,7 +24,7 @@ import { PizzaRolls, pizzaRolls } from "./rolls";
 import { microwaveState } from "./props/microwave";
 import { LavaSurface, magma, Plate, Pocket, useCrumbs, useLavaLight, usePuffs } from "./render";
 import { BACKSPLASH_Z, bitten, COUNTER, MAX_BITES, MICROWAVE, nextBite, outline, pocketToWorld, SLEEVE, topHeight, worldToPocket } from "./shape";
-import { crunch, ding, plop, sizzle } from "./sound";
+import { crunch, ding, plop, preloadBite, sizzle } from "./sound";
 import { clock } from "./time";
 
 // A bright day, as Pendulum's studio: little bloom (only the lava passes its threshold), soft occlusion in the
@@ -41,10 +41,10 @@ const LOOK = {
   bloomThreshold: 0.92,
   // Bounce light on High (the lava's glow warming the pastry and plate, the white plate lifting the pocket's underside),
   // reaching about 6 cm, the scale of the plate; occlusion in the folds, the crumbs and under the rolls.
-  gi: 3.2,
+  gi: 1.6,
   giRadius: 0.25,
-  ao: 1,
-  aoRadius: 0.09,
+  ao: 1.5,
+  aoRadius: 0.07,
   vignette: 0.25,
   grain: 0.02,
   haze: 0
@@ -92,7 +92,9 @@ function Scene() {
   // The microwave runs for a moment when the pocket appears, then dings: it is ready.
   const [cooking, setCooking] = useState(false);
   useBed("hum", cooking ? 0.3 : 0);
+  useMusic("/codevember/music/trip-hop-vocal-intimate.mp3", 0.3);
   const microwave = useRef(0);
+  const settings = useSettingsStore();
   const cook = (then?: () => void) => {
     setCooking(true);
     microwaveState.cookingSince = performance.now();
@@ -106,6 +108,7 @@ function Scene() {
   };
   const started = useRef(false);
   useEffect(() => () => window.clearTimeout(microwave.current), []);
+  useEffect(preloadBite, []);
 
   const flow = useRef({ since: 0, earned: false, nextSizzle: 0, nextPlop: 0, vent: 0 });
 
@@ -166,10 +169,19 @@ function Scene() {
     plateCrumbs.reset();
     pizzaRolls.clear();
     resetPrompt();
+    settings.set("rolls", false);
     cook();
   });
   // Ten pizza rolls, microwaved and then tipped out onto the plate as it dings.
-  useSettingAction("rolls", () => cook(() => pizzaRolls.add(10)));
+  // The button says so, with a spinner, until they are out.
+  useSettingAction("rolls", () => {
+    if (settings.get("rolls") === true) return;
+    settings.set("rolls", true);
+    cook(() => {
+      pizzaRolls.add(10);
+      settings.set("rolls", false);
+    });
+  });
 
   // For testing in development: put the eye somewhere from the console, looking at a point.
   useEffect(() => {
@@ -300,7 +312,7 @@ function Scene() {
   return (
     <>
       <Intro to={magmaDay.camera} />
-      <Kitchen mirror={startTier === "high"} />
+      <Kitchen mirror={startTier === "high"} sharp={startTier === "high"} />
       <Plate lava={lava} />
       <Props fine={startTier !== "low"} />
       <Pocket crust={crust} fine={startTier !== "low"} />
@@ -334,7 +346,7 @@ const magmaDay: DayDefinition = {
   passes: { haze: false, bounce: true, halfBounce: true, overlay: true, depthOfField: { range: 0.3 } },
   settings: {
     fresh: { type: "action", label: "Microwave another" },
-    rolls: { type: "action", label: "Add some Pizza Rolls" },
+    rolls: { type: "action", label: "Add some Pizza Rolls", busyLabel: "Microwaving Pizza Rolls…" },
     speed: { type: "range", label: "Speed", min: 1, max: 4, step: 0.5, value: 1 }
   },
   phonePills: ["fresh", "rolls"],
@@ -362,7 +374,7 @@ const magmaDay: DayDefinition = {
       title: "Pizza rolls",
       points: [
         "Rapier bodies, each a small hull of the pillow shape, fall onto a trimesh of the plate and a hull of the pocket, then freeze.",
-        "A bite cuts the roll away in the shader and swaps in a half hull; its filling joins the lava flow as a source on the plate."
+        "Settled rolls are raised into the lava's floor, so a bitten one's filling runs from its cut over the rolls below and down to the plate."
       ]
     },
     {
