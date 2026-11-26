@@ -1762,13 +1762,6 @@ a.cv-step:hover {
   }
 }
 
-/* Beside the settings panel when it is open, rather than over it. */
-@media (min-width: 721px) {
-  .cv-hud:has(.cv-panel-open) .cv-follow {
-    right: calc(max(20px, env(safe-area-inset-right)) + 264px + 12px);
-  }
-}
-
 /* On a phone, along the bottom just above the ruler. */
 @media (max-width: 720px) {
   .cv-follow {

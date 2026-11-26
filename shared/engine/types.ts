@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { Node } from "three/webgpu";
 
 export type RangeSetting = {
   type: "range";
@@ -103,7 +104,10 @@ export type Extents = { centre: [number, number, number]; radius: number; floor?
 // some at the left edge too, full at `to` and gone by `from`, at `strength` of the right's.
 export type SideBlur = { from: number; to: number; amount: number; left?: { from: number; to: number; strength: number } };
 
-export type DepthOfField = { range: number; air?: number; airRate?: number; airBehindFocus?: number; sharpSky?: boolean };
+// depth, if a day gives it, reshapes the distances the blur reads (view space z, negative ahead), say to hold a part of
+// the view in focus whatever its distance; the air still reads the true ones.
+// `onLow` keeps the blur on the low tier too, for a day whose look depends on it (it is otherwise left off there).
+export type DepthOfField = { range: number; air?: number; airRate?: number; airBehindFocus?: number; sharpSky?: boolean; depth?: (viewZ: Node) => Node; onLow?: boolean };
 
 // Keeps the camera near where it starts: `turn` degrees of orbit each way, and `move` units of travel each way for the point
 // it looks at and for its distance from that point. Either can instead give each way its own amount. Travel is measured
@@ -143,7 +147,8 @@ export type DayDefinition = {
   // temporal false: edges smoothed within each frame (FXAA) rather than across frames, and only on a screen of under 1.75 CSS
   // pixels to the device pixel, where the edges need it; for a scene that must look the same from its first frame.
   // occlusion false: no shading in creases, for a scene that has none to show.
-  passes?: { bounce?: boolean; halfBounce?: boolean; haze?: boolean; overlay?: boolean; depthOfField?: DepthOfField; sideBlur?: SideBlur; chromatic?: number; rush?: boolean; toneMapping?: "none"; temporal?: false; occlusion?: false };
+  // veil: a layer (VEIL_LAYER) over the frame that hides what is behind it by its alpha, as fog does. Off by default.
+  passes?: { bounce?: boolean; halfBounce?: boolean; haze?: boolean; overlay?: boolean; veil?: boolean; depthOfField?: DepthOfField; sideBlur?: SideBlur; chromatic?: number; rush?: boolean; toneMapping?: "none"; temporal?: false; occlusion?: false };
   settings?: SettingsSchema;
   hint?: string;
   // How the scene is made, in a couple of sentences. Shown under the wordmark on desktop.

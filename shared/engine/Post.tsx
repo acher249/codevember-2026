@@ -73,6 +73,11 @@ export const rushAmount = uniform(0);
 // they would write their motion into the buffer that the blend trusts, and everything behind them would shimmer.
 export const OVERLAY_LAYER = 11;
 
+// A veil over the finished frame (fog that hides what is behind it): its layer is drawn into a buffer of its own at
+// half size, colour as the light it adds and alpha as how much of the frame behind it it hides. Only for a day that
+// asks for it (`passes.veil`); its materials read the scene depth through `overlayLink`.
+export const VEIL_LAYER = 12;
+
 export const overlayLink = {
   depth: null as any,
   listeners: new Set<(depth: any) => void>(),
@@ -132,6 +137,7 @@ type PostProps = {
   bounce?: boolean;
   halfBounce?: boolean;
   overlay?: boolean;
+  veil?: boolean;
   depthOfField?: DepthOfField;
   sideBlur?: SideBlur;
   rush?: boolean;
@@ -150,7 +156,7 @@ type PostProps = {
 //   high    SSGI (bounce + AO), haze, bloom, TRAA
 //   medium  GTAO, haze, bloom, TRAA
 //   low     bloom and FXAA, for phones and slow machines
-export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false, overlay = false, depthOfField, sideBlur, chromatic, rush = false, toneMapping, temporal, occlusion, phase }: PostProps) {
+export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false, overlay = false, veil = false, depthOfField, sideBlur, chromatic, rush = false, toneMapping, temporal, occlusion, phase }: PostProps) {
   const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
@@ -276,8 +282,9 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
       held = null;
     }
 
-    if (depthOfField && tier !== "low") {
-      const viewZ = scenePass.getViewZNode() as any;
+    if (depthOfField && (tier !== "low" || depthOfField.onLow)) {
+      const seen = scenePass.getViewZNode() as any;
+      const viewZ = depthOfField.depth ? depthOfField.depth(seen) : seen;
       const blurred: any = dof(color, isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ, focusDistance, uniform(depthOfField.range), focusBlur);
       color = mix(blurred, color, postSharp) as any;
       held = blurred.getTextureNode();
@@ -318,6 +325,17 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
       color = chromaticAberration(color as any, uniform(chromatic), vec2(0.5, 0.5) as any, float(1) as any) as any;
     }
 
+    if (veil) {
+      const veilLayer = new THREE.Layers();
+      veilLayer.disableAll();
+      veilLayer.enable(VEIL_LAYER);
+      const veilPass: any = pass(scene, camera, { depthBuffer: false } as any);
+      veilPass.setLayers(veilLayer);
+      veilPass.setResolutionScale(0.5);
+      color = vec4(color.rgb.mul(float(1).sub(veilPass.a)).add(veilPass.rgb), color.a);
+      sceneDepth = scenePass.getTextureNode("depth");
+    }
+
     if (overlay) {
       const overlayLayer = new THREE.Layers();
       overlayLayer.disableAll();
@@ -354,7 +372,7 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
     return { stack, tuners, hazeDepth, sceneDepth };
     // Only the things that change the graph's shape are dependencies. Look values go through tuners.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, depthOfField, sideBlur, chromatic, rush, halfBounce, toneMapping, temporal, occlusion, uniforms]);
+  }, [gl, scene, camera, quality, hasHaze, bounce, overlay, veil, depthOfField, sideBlur, chromatic, rush, halfBounce, toneMapping, temporal, occlusion, uniforms]);
 
   useEffect(() => {
     gl.toneMappingExposure = look.exposure;

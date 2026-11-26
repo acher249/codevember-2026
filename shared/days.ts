@@ -65,7 +65,8 @@ const LIVE: Record<number, string> = {
   21: "A plasma globe floating in a dark room it lights itself. Touch the glass and the lightning finds your fingertip; turn on IRL Hands and touch it with your real fingers through the camera.",
   22: "The AI bubble, floating in a hall of mirrors. Throw a GPU at it and watch it pop, the burst echoing out through every reflection in a storm of graphics cards and memory.",
   23: "A microwave pocket, fresh out of the microwave, with magma for a filling. Bite the end and it pours out over the paper plate, scorching it and setting the crumbs alight; then add some pizza rolls and bite those too.",
-  24: "Three chicks shivering in a snowy nest, and a smart thermostat screwed to the tree. Turn it up and the snow melts, the leaves come out and the chicks thaw, cheer and put on sunglasses. Leave it alone and it goes Away."
+  24: "Three chicks shivering in a snowy nest, and a smart thermostat screwed to the tree. Turn it up and the snow melts, the leaves come out and the chicks thaw, cheer and put on sunglasses. Leave it alone and it goes Away.",
+  25: "Three veiled statues, close, in glass or marble before a world gone to soft light. Change their stone and the light behind them; switch on Glitch and they mosh between stones."
 };
 
 const CODEVEMBER_YEAR = 2026;

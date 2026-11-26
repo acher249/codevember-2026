@@ -388,7 +388,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
           <SettingsProvider value={settings}>
             <GrabProvider value={registry}>
               <LookContext.Provider value={applyLook}>
-                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} halfBounce={definition?.passes?.halfBounce === true} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} rush={definition?.passes?.rush ?? definition?.explore === true} phase={phase} />
+                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} halfBounce={definition?.passes?.halfBounce === true} overlay={definition?.passes?.overlay === true} veil={definition?.passes?.veil === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} rush={definition?.passes?.rush ?? definition?.explore === true} phase={phase} />
                 <AdaptiveQuality
                   choice={choice}
                   floor={definition?.autoFloor}

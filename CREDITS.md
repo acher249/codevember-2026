@@ -188,3 +188,15 @@ The tree's bark and the moss are CC0 textures, so no credit is required, but it 
 | --- | --- | --- |
 | [Bark Brown 02](https://polyhaven.com/a/bark_brown_02) (`public/assets/24-nest/bark_brown_02_*`) | [Poly Haven](https://polyhaven.com) | CC0 |
 | [Moss 003](https://ambientcg.com/view?id=Moss003) (`public/assets/24-nest/moss_*`) | [ambientCG](https://ambientcg.com) | CC0 |
+
+## Veil
+
+The veiled figure is reconstructed from a photograph, and its depth read by a model; the body under the cloth is CC0. Everything else (the statues' marble, glass and obsidian, the floor, the sky and its out-of-focus lights, and the breeze, simulated offline in code) is made in code.
+
+| Asset | By | License |
+| --- | --- | --- |
+| Veiled abstract figure (the photograph `public/assets/25-veil/figure-*` is rebuilt from) | [StockCake](https://stockcake.com) | Free to use |
+| [MoGe-3 ViT-G](https://github.com/microsoft/MoGe) (the depth and normals of that photograph) | Microsoft | MIT |
+| [Human Base Meshes](https://studio.blender.org/projects/human-base-meshes/) (the seated body under the cloth) | Blender Studio | CC0 |
+| [Low Tide Rocks](https://polyhaven.com/a/low_tide_rocks) (`public/assets/25-veil/low_tide_rocks_*`, development-only takes) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Coast Sand Rocks 02](https://polyhaven.com/a/coast_sand_rocks_02) (`public/assets/25-veil/coast_sand_rocks_02_*`, development-only takes) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |

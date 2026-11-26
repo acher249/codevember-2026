@@ -139,6 +139,13 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <a href="24-nest">Code</a> · <a href="https://adamwebsite.com/codevember/24-nest/">Live</a>
     </td>
   </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="25-veil"><img src="videos/25-veil.gif" alt="Veil" width="260"></a><br>
+      <b>Day 25: <a href="25-veil">Veil</a></b><br>
+      <a href="25-veil">Code</a> · <a href="https://adamwebsite.com/codevember/25-veil/">Live</a>
+    </td>
+  </tr>
 </table>
 
 ## Quick start
@@ -181,6 +188,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 22 | [Echo](22-echo) | The AI bubble, floating in a hall of mirrors. Throw a GPU at it and watch it pop, the burst echoing out through every reflection in a storm of graphics cards and memory. |
 | 23 | [Magma](23-magma) | A microwave pocket, fresh out of the microwave, with magma for a filling. Bite the end and it pours out over the paper plate, scorching it and setting the crumbs alight; then add some pizza rolls and bite those too. |
 | 24 | [Nest](24-nest) | Three chicks shivering in a snowy nest, and a smart thermostat screwed to the tree. Turn it up and the snow melts, the leaves come out and the chicks thaw, cheer and put on sunglasses. Leave it alone and it goes Away. |
+| 25 | [Veil](25-veil) | Three veiled statues, close, in glass or marble before a world gone to soft light. Change their stone and the light behind them; switch on Glitch and they mosh between stones. |
 
 ## Controls
 

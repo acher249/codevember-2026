@@ -247,6 +247,22 @@ function SceneWarmup({ phase, onCompiling, onReady, judge, hold }: { phase: RefO
   return null;
 }
 
+// The lens kept to the shape of the canvas. R3F makes its camera with no shape (an aspect of 0) and gives it one only when
+// it sees the canvas change size; with the renderer made asynchronously, the canvas can already have its final size
+// before the camera exists, and then the camera never gets one. Every frame is then drawn through a lens that sees nothing:
+// the draws all run, but only the background colour reaches the screen. Nothing is touched while the two agree.
+function LensShape() {
+  useFrame((state) => {
+    const lens = state.camera as THREE.PerspectiveCamera;
+    if (!lens.isPerspectiveCamera || !state.size.height) return;
+    const aspect = state.size.width / state.size.height;
+    if (Math.abs(lens.aspect - aspect) < 1e-4) return;
+    lens.aspect = aspect;
+    lens.updateProjectionMatrix();
+  });
+  return null;
+}
+
 // The site's Stage, with the hub as one more module: with no day, it shows the hub. The renderer lives for the whole visit,
 // the hub included, so there is no new GPU device, canvas or page load between the calendar and a day.
 export default function HubStage({ day, onStep }: { day: CodevemberDay | null; onStep: (step: LoadStep) => void }) {
@@ -440,7 +456,7 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
           <SettingsProvider value={settings}>
             <GrabProvider value={registry}>
               <LookContext.Provider value={applyLook}>
-                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} halfBounce={definition?.passes?.halfBounce === true} overlay={definition?.passes?.overlay === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} rush={definition?.passes?.rush ?? definition?.explore === true} toneMapping={definition?.passes?.toneMapping} temporal={definition?.passes?.temporal} occlusion={definition?.passes?.occlusion} phase={phase} />
+                <Post look={look} quality={tier} hasHaze={definition?.passes?.haze !== false} bounce={definition?.passes?.bounce !== false} halfBounce={definition?.passes?.halfBounce === true} overlay={definition?.passes?.overlay === true} veil={definition?.passes?.veil === true} depthOfField={definition?.passes?.depthOfField} sideBlur={definition?.passes?.sideBlur} chromatic={definition?.passes?.chromatic} rush={definition?.passes?.rush ?? definition?.explore === true} toneMapping={definition?.passes?.toneMapping} temporal={definition?.passes?.temporal} occlusion={definition?.passes?.occlusion} phase={phase} />
                 <AdaptiveQuality
                   choice={choice}
                   floor={definition?.autoFloor}
@@ -451,6 +467,7 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
                     if (fpsRef.current) fpsRef.current.textContent = `${Math.round(fps)} fps`;
                   }}
                 />
+                <LensShape />
                 {definition && loaded ? (
                   <>
                     {loaded.day ? null : <CameraRig key="rig-hub" {...startingView(definition.camera)} sprintFov={definition.camera.sprintFov ?? 0} limits={definition.camera.limits} registry={registry} />}

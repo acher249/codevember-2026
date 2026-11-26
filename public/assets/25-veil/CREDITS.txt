@@ -1,0 +1,9 @@
+The veiled figure is reconstructed from a photograph, "Veiled abstract figure" on StockCake (https://stockcake.com, free to use): its geometry read by MoGe-3 ViT-G (Microsoft, MIT licence; https://github.com/microsoft/MoGe), made whole and simulated in Blender.
+The seated body under the cloth is from Blender Studio's Human Base Meshes (CC0).
+Everything else (the statues' marble, glass and obsidian, the floor, the sky and its out-of-focus lights) is shaded in code.
+
+Used by the development-only takes (not the one that goes out): CC0 textures from Poly Haven (https://polyhaven.com). No credit is required, but it is due.
+Low Tide Rocks, by Dimitrios Savva
+Coast Sand Rocks 02, by Rob Tuytel
+
+On adamwebsite.com only, not in the open-source repo: the background music, "Across the Silent Sands" (see music/CREDITS.txt), and a recorded sound effect (ElevenLabs), glass-tap.mp3, a tiny soft glassy tap played as you press to click or drag.
