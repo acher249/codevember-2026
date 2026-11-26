@@ -145,6 +145,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 25: <a href="25-veil">Veil</a></b><br>
       <a href="25-veil">Code</a> · <a href="https://adamwebsite.com/codevember/25-veil/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="26-anamorph"><img src="videos/26-anamorph.gif" alt="Anamorph" width="260"></a><br>
+      <b>Day 26: <a href="26-anamorph">Anamorph</a></b><br>
+      <a href="26-anamorph">Code</a> · <a href="https://adamwebsite.com/codevember/26-anamorph/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -189,6 +194,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 23 | [Magma](23-magma) | A microwave pocket, fresh out of the microwave, with magma for a filling. Bite the end and it pours out over the paper plate, scorching it and setting the crumbs alight; then add some pizza rolls and bite those too. |
 | 24 | [Nest](24-nest) | Three chicks shivering in a snowy nest, and a smart thermostat screwed to the tree. Turn it up and the snow melts, the leaves come out and the chicks thaw, cheer and put on sunglasses. Leave it alone and it goes Away. |
 | 25 | [Veil](25-veil) | Three veiled statues, close, in glass or marble before a world gone to soft light. Change their stone and the light behind them; switch on Glitch and they mosh between stones. |
+| 26 | [Anamorph](26-anamorph) | A chalk drawing of a swimming pool on a Brooklyn sidewalk. Walk round it, then tap it: the view sweeps to the one spot it was drawn for and it becomes real. Or pick a lava crack, a reef, a crystal cave, a pit or a subway. |
 
 ## Controls
 

@@ -1,0 +1,29 @@
+All CC0, from Poly Haven (https://polyhaven.com). No credit is required, but it is due.
+Concrete Pavement, by Charlotte Baglioni
+Asphalt 02, by Rob Tuytel
+Red Brick 03, by Rob Tuytel
+Bark Platanus, by Dimitrios Savva
+Blue Floor Tiles 01, by Rob Tuytel
+Granite Tile, by Charlotte Baglioni
+Fire Hydrant, by Gonçalo Felício
+Wooden Ladder, by Miroslav Turura
+Street Lamp 01, by Josh Dean
+Borrowed from ../pendulum: Concrete Floor Worn 001, by Dimitrios Savva and Rico Cilliers
+Borrowed from ../kelp: Low Tide Rocks, by Dimitrios Savva
+Dirty Concrete, by Rob Tuytel
+Cracked Concrete, by Dimitrios Savva
+Granular Concrete, by Dario Barresi and Michael Jenkins
+
+Audio, not CC0:
+city-street.mp3: New York City street ambience, supplied by the site owner (generated with ElevenLabs); audio is never copied to the open-source repo.
+city-busy.mp3: busy New York City street ambience, supplied by the site owner (generated with ElevenLabs).
+ocean/coral_ground_02: Coral Ground 02, by Rob Tuytel (Poly Haven, CC0)
+ocean/aerial_beach_01: Aerial Beach 01, by Rob Tuytel (Poly Haven, CC0)
+Dark Rock 02 (lava/dark_rock_02), by Amal Kumar
+subway/long_white_tiles: Long White Tiles, by Jenelle van Heerden and Sergej Majboroda (Poly Haven, CC0)
+subway/tarred_gravel: Tarred Gravel, by Dimitrios Savva (Poly Haven, CC0)
+crystal/rock_face_03: Rock Face 03, by Dario Barresi and Rico Cilliers (Poly Haven, CC0)
+canyon/cliff_side: Cliff Side, by James Ray Cock, Jenelle van Heerden and Dario Barresi (Poly Haven, CC0)
+canyon/aerial_grass_rock: Aerial Grass Rock, by Rob Tuytel (Poly Haven, CC0)
+chalk.mp3: chalk drawing on a slate, quickly (generated with ElevenLabs; supplied by the site owner)
+eraser.mp3: a felt blackboard eraser wiping (generated with ElevenLabs; supplied by the site owner)

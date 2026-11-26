@@ -200,3 +200,28 @@ The veiled figure is reconstructed from a photograph, and its depth read by a mo
 | [Human Base Meshes](https://studio.blender.org/projects/human-base-meshes/) (the seated body under the cloth) | Blender Studio | CC0 |
 | [Low Tide Rocks](https://polyhaven.com/a/low_tide_rocks) (`public/assets/25-veil/low_tide_rocks_*`, development-only takes) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |
 | [Coast Sand Rocks 02](https://polyhaven.com/a/coast_sand_rocks_02) (`public/assets/25-veil/coast_sand_rocks_02_*`, development-only takes) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+
+## Anamorph
+
+The street, its trees and cars, the six paintings and everything in them (water, lava, fish, crystals, bats, the train) are made in code over these scans and models. The chalk and eraser sounds are this site's own and are not in this repo.
+
+| Asset | By | License |
+| --- | --- | --- |
+| [Concrete Pavement](https://polyhaven.com/a/concrete_pavement) (`public/assets/26-anamorph/concrete_pavement_*`) | Charlotte Baglioni, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Dirty Concrete](https://polyhaven.com/a/dirty_concrete) (`public/assets/26-anamorph/dirty_concrete_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Cracked Concrete](https://polyhaven.com/a/cracked_concrete) (`public/assets/26-anamorph/cracked_concrete_*`) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Granular Concrete](https://polyhaven.com/a/granular_concrete) (`public/assets/26-anamorph/granular_concrete_*`) | Dario Barresi and Michael Jenkins, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Asphalt 02](https://polyhaven.com/a/asphalt_02) (`public/assets/26-anamorph/asphalt_02_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Red Brick 03](https://polyhaven.com/a/red_brick_03) (`public/assets/26-anamorph/red_brick_03_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Granite Tile](https://polyhaven.com/a/granite_tile) (`public/assets/26-anamorph/granite_tile_*`) | Charlotte Baglioni, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Bark Platanus](https://polyhaven.com/a/bark_platanus) (`public/assets/26-anamorph/bark_platanus_*`) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Blue Floor Tiles 01](https://polyhaven.com/a/blue_floor_tiles_01) (`public/assets/26-anamorph/blue_floor_tiles_01_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Fire Hydrant](https://polyhaven.com/a/fire_hydrant) (`public/assets/26-anamorph/fire_hydrant/`) | Gonçalo Felício, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Wooden Ladder](https://polyhaven.com/a/wooden_ladder) (`public/assets/26-anamorph/wooden_ladder/`) | Miroslav Turura, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Street Lamp 01](https://polyhaven.com/a/street_lamp_01) (`public/assets/26-anamorph/street_lamp_01/`) | Josh Dean, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Dark Rock 02](https://polyhaven.com/a/dark_rock_02) (`public/assets/26-anamorph/lava/dark_rock_02_*`) | Amal Kumar, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Coral Ground 02](https://polyhaven.com/a/coral_ground_02) (`public/assets/26-anamorph/ocean/coral_ground_02_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Aerial Beach 01](https://polyhaven.com/a/aerial_beach_01) (`public/assets/26-anamorph/ocean/aerial_beach_01_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Rock Face 03](https://polyhaven.com/a/rock_face_03) (`public/assets/26-anamorph/crystal/rock_face_03_*`) | Dario Barresi and Rico Cilliers, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Long White Tiles](https://polyhaven.com/a/long_white_tiles) (`public/assets/26-anamorph/subway/long_white_tiles_*`) | Jenelle van Heerden and Sergej Majboroda, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Tarred Gravel](https://polyhaven.com/a/tarred_gravel) (`public/assets/26-anamorph/subway/tarred_gravel_*`) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type RefObject } from "react";
 import { dayHref, days, promptDayFor, type CodevemberDay } from "../days";
 import { narrowScreen, type QualityChoice } from "../engine/quality";
 import type { SettingsStore } from "../engine/settings";
@@ -502,7 +502,7 @@ const CHOICES: { value: QualityChoice; label: string }[] = [
 type HudProps = {
   day: CodevemberDay;
   hint?: string;
-  prompt?: { title: string; detail?: string; high?: boolean; low?: boolean };
+  prompt?: { title: string; detail?: string; high?: boolean; low?: boolean; phoneUp?: number; phoneAside?: boolean };
   notes?: string;
   overview?: OverviewSection[];
   Overlay?: ComponentType;
@@ -709,7 +709,7 @@ export function Hud({ day, hint, prompt, notes, overview, Overlay, settings, pho
 
       <AnimatePresence>
         {prompt && !promptDone ? (
-          <motion.div className={`cv-prompt ${prompt.high ? "cv-prompt-high" : prompt.low ? "cv-prompt-low" : ""}`} key={`prompt-${day.day}`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, scale: 0.97 }} transition={SETTLE}>
+          <motion.div className={`cv-prompt ${prompt.high ? "cv-prompt-high" : prompt.low ? "cv-prompt-low" : ""} ${prompt.phoneAside ? "cv-prompt-aside" : ""}`} style={prompt.phoneUp ? ({ "--cv-prompt-up": `${prompt.phoneUp}px` } as CSSProperties) : undefined} key={`prompt-${day.day}`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, scale: 0.97 }} transition={SETTLE}>
             <i aria-hidden="true" />
             <p>{prompt.title}</p>
             {prompt.detail ? <small>{prompt.detail}</small> : null}

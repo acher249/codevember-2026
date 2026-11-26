@@ -951,6 +951,22 @@ body {
   pointer-events: none;
 }
 
+/* On a phone, raised by the day's phoneUp (padding below moves the centred prompt up by half of it). */
+@media (max-width: 900px), (hover: none) {
+  .cv-prompt {
+    padding-bottom: calc(18vh + 2 * var(--cv-prompt-up, 0px));
+  }
+
+  .cv-prompt.cv-prompt-aside {
+    padding-right: 104px;
+    padding-left: 12px;
+  }
+
+  .cv-prompt.cv-prompt-aside p {
+    font-size: 38px;
+  }
+}
+
 @media (min-width: 901px) and (hover: hover) {
   .cv-prompt.cv-prompt-high {
     padding-bottom: 74vh;
@@ -980,6 +996,7 @@ body {
 
 .cv-prompt p {
   margin: 0;
+  white-space: pre-line;
   font-family: var(--font-display), Arial, sans-serif;
   font-weight: 800;
   font-size: clamp(44px, 6vw, 84px);

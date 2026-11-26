@@ -157,7 +157,9 @@ export type DayDefinition = {
   overview?: OverviewSection[];
   // Shown in the middle of the screen until the day calls dismissPrompt.
   // high: on a desktop, set well up the screen, clear of a subject that sits in the middle; low: under it, smaller.
-  prompt?: { title: string; detail?: string; high?: boolean; low?: boolean };
+  // A line break in the title is kept. On a phone, phoneUp raises it by this many pixels, and phoneAside keeps it
+  // clear of the column of pills down the right.
+  prompt?: { title: string; detail?: string; high?: boolean; low?: boolean; phoneUp?: number; phoneAside?: boolean };
   // Anything of the day's own to show over the scene, as ordinary page content.
   Overlay?: ComponentType;
   Scene: ComponentType;

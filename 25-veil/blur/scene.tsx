@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { use, useEffect, useMemo } from "react";
+import { use, useEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three/webgpu";
 import { Fn, attribute, cameraPosition, color, dot, max, mix, mx_fractal_noise_float, normalize, positionGeometry, positionWorld, pow, sin, smoothstep, time, uniform, vec3, vec4, vertexStage } from "three/tsl";
 import { orbitPoint } from "../../shared/engine/controls";
@@ -145,6 +145,7 @@ function Bokeh({ look }: { look: Look }) {
 // The floor they sit on, of the same stone (or glass) as they are, fading into the sky with distance; raised a little,
 // so they sink into it and the cloth's last fall onto the ground is hidden under it.
 const FLOOR_Y = 0.1;
+// One floor for each material, the chosen one shown (usePrimed), so picking another shows it at once.
 function Floor({ look }: { look: Look }) {
   const kind = (useSetting<string>("material") as Material) ?? "glass";
   const parts = useMemo(() => {
@@ -152,17 +153,44 @@ function Floor({ look }: { look: Look }) {
     geometry.rotateX(-Math.PI / 2);
     geometry.translate(0, FLOOR_Y, 0);
     const palette = { key: look.light, left: look.fill, right: look.bokeh[0], zenith: look.zenith, horizon: look.horizon };
-    const material = sculpt(kind as Kind, palette) as THREE.NodeMaterial;
-    material.transparent = true;
-    material.depthWrite = false;
-    // Gone well before it could meet the sky in a line.
-    material.opacityNode = smoothstep(7, 2.5, (positionWorld as any).xz.length()) as any;
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.receiveShadow = true;
-    return { geometry, material, mesh };
-  }, [look, kind]);
-  useDispose(parts.geometry, parts.material);
-  return <primitive object={parts.mesh} />;
+    const group = new THREE.Group();
+    const materials = MATERIALS.map((k) => {
+      const material = sculpt(k as Kind, palette) as THREE.NodeMaterial;
+      material.transparent = true;
+      material.depthWrite = false;
+      // Gone well before it could meet the sky in a line.
+      material.opacityNode = smoothstep(7, 2.5, (positionWorld as any).xz.length()) as any;
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.receiveShadow = true;
+      group.add(mesh);
+      return material;
+    });
+    return { geometry, materials, group };
+  }, [look]);
+  useDispose(parts.geometry, ...parts.materials);
+  const shown = MATERIALS.indexOf(kind);
+  parts.group.children.forEach((mesh, i) => (mesh.visible = i === shown));
+  usePrimed(parts.group, shown, parts);
+  return <primitive object={parts.group} />;
+}
+
+// Every material drawn once, out of sight, as soon as it is made (behind the loader, at first), so picking another in
+// the panel shows it at once instead of holding the page while its shaders are built. Three.js takes the objects to
+// build synchronously, so they are shown only for the length of the call.
+function usePrimed(holder: THREE.Group | RefObject<THREE.Group | null>, shown: number, made: unknown) {
+  const gl = useThree((state) => state.gl) as unknown as THREE.WebGPURenderer;
+  const camera = useThree((state) => state.camera);
+  const scene = useThree((state) => state.scene);
+  const at = useRef(shown);
+  at.current = shown;
+  useEffect(() => {
+    const g = "current" in holder ? holder.current : holder;
+    if (!g) return;
+    g.children.forEach((child) => (child.visible = true));
+    gl.compileAsync(g, camera, scene).catch(() => undefined);
+    g.children.forEach((child, i) => (child.visible = i === at.current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl, camera, scene, made]);
 }
 
 function Light({ look }: { look: Look }) {
@@ -238,7 +266,7 @@ const label = (s: string) => NAMES[s] ?? s[0].toUpperCase() + s.slice(1);
 // them under the thumb; the Sun stays in the panel.
 const PHONE: Partial<DayDefinition> = { phoneDock: ["material", "background"], phoneDockPills: ["glitch"] };
 
-const UPRIGHT = { position: [0.1, 1.25, 3.2] as [number, number, number], target: [0.01, 0.76, 0] as [number, number, number], fov: 40 };
+const UPRIGHT = { position: [0.08, 1.2, 2.6] as [number, number, number], target: [0.01, 0.76, 0] as [number, number, number], fov: 40 };
 const upright = () => typeof window !== "undefined" && window.innerHeight > window.innerWidth;
 
 export function blurred(look: Look, name = "ember"): DayDefinition {
@@ -258,15 +286,30 @@ export function blurred(look: Look, name = "ember"): DayDefinition {
     const wind = use(breezeFor(data));
     useBreeze(wind);
     const base = useMemo(() => () => breeze(wind), [wind]);
-    const make = useMemo(
-      () => () => {
-        const material = sculpt(kind as Kind, palette) as THREE.NodeMaterial;
-        material.positionNode = base();
-        return material;
-      },
-      [kind, palette, base]
+    // A set of statues in each material, the chosen one shown and the rest built out of sight (usePrimed): a material
+    // made only when it was picked held the page while its shaders were built.
+    const makers = useMemo(
+      () =>
+        MATERIALS.map((k) => () => {
+          const material = sculpt(k as Kind, palette) as THREE.NodeMaterial;
+          material.positionNode = base();
+          return material;
+        }),
+      [palette, base]
     );
-    return glitch ? <GlitchWatchers data={data} seats={SEATS} keyDir={keyDir} palette={palette} style={glitch} base={base} /> : <Watchers data={data} seats={SEATS} keyDir={keyDir} make={make} />;
+    const sets = useRef<THREE.Group>(null);
+    const shown = MATERIALS.indexOf(kind);
+    usePrimed(sets, shown, glitch ? null : makers);
+    if (glitch) return <GlitchWatchers data={data} seats={SEATS} keyDir={keyDir} palette={palette} style={glitch} base={base} />;
+    return (
+      <group ref={sets}>
+        {makers.map((make, i) => (
+          <group key={MATERIALS[i]} visible={i === shown}>
+            <Watchers data={data} seats={SEATS} keyDir={keyDir} make={make} />
+          </group>
+        ))}
+      </group>
+    );
   }
   function Scene() {
     const look = useLook();
