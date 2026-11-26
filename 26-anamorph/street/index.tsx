@@ -391,7 +391,7 @@ function pace(run: Sweep) {
 
 // The drawing's outline on the sidewalk, lit to show it can be tapped: drawn round from a point when it shows, then a
 // glint running round it. A thin ribbon just above the stone, along the drawing's edge.
-function outlineOf(edge: THREE.Vector3[]) {
+function outlineGeometry(edge: THREE.Vector3[]) {
   const n = edge.length;
   const lengths = [0];
   for (let i = 1; i <= n; i++) lengths.push(lengths[i - 1] + edge[i % n].distanceTo(edge[i - 1]));
@@ -413,6 +413,12 @@ function outlineOf(edge: THREE.Vector3[]) {
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
+  return geometry;
+}
+
+// One ribbon for every painting, its geometry swapped for the painting's own: a material of its own for each was a
+// shader built the first time it was pointed at after a switch, which held the frame up.
+function outlineOf(geometry: THREE.BufferGeometry) {
   const show = uniform(0);
   const trace = uniform(0);
   const time = uniform(0);
@@ -426,7 +432,7 @@ function outlineOf(edge: THREE.Vector3[]) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.renderOrder = 2;
   mesh.frustumCulled = false;
-  return { mesh, show, trace, time, geometries: [geometry], materials: [material] };
+  return { mesh, show, trace, time, materials: [material] };
 }
 
 // Going back to chalk, the painting is set back to how it was drawn (its clock at 0) not by running its clock back
@@ -716,14 +722,19 @@ function makeScene(kind: DrawingKind) {
       drawing.real.traverse((o) => (o as THREE.Mesh).isMesh && o.castShadow && list.push({ mesh: o as THREE.Mesh, at: [] }));
       return list;
     }, [drawing]);
-    // The painting's own, apart: freeing them with the street's when the painting changes freed the street too, and
-    // while its shaders were built again it went undrawn (a frame of bare page).
-    const outline = useMemo(() => outlineOf(drawing.edge), [drawing]);
+    // Each painting's outline, made once with it.
+    const outlines = useMemo(() => new Map([...built.values()].map((d) => [d, outlineGeometry(d.edge)])), [built]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const outline = useMemo(() => outlineOf(outlines.get(drawing)!), [outlines]);
+    useMemo(() => (outline.mesh.geometry = outlines.get(drawing)!), [outline, outlines, drawing]);
     // Where the pointer is, whether it is over the drawing, and whether each way through it has been tried yet (the tip
     // shows until it has).
     const hover = useRef({ over: false, x: 0, y: 0, tried: { real: false, chalk: false }, trace: 1 });
     useDispose(...[...built.values()].flatMap((d) => [...d.geometries, ...d.materials]));
-    useDispose(...outline.geometries, ...outline.materials, ...leaves.geometries, ...leaves.materials, ...trash.geometries, ...trash.materials);
+    // Each set freed on its own: one call frees all it holds whenever any of it changes, and the leaves and litter, freed
+    // along with something made for the painting, went undrawn on every switch while they were sent to the GPU again.
+    useDispose(...outlines.values(), ...outline.materials);
+    useDispose(...leaves.geometries, ...leaves.materials, ...trash.geometries, ...trash.materials);
     useDispose(picture, shadowOnly, ...ground.geometries, ...ground.materials, ...street.geometries, ...street.materials, ...sticks.geometries, ...sticks.materials, ...dust.geometries, ...dust.materials);
 
     useBed("breeze", 0.08);
@@ -863,7 +874,7 @@ function makeScene(kind: DrawingKind) {
     useEffect(() => () => void (cameraTaken.current = false), []);
     useEffect(() => {
       if (process.env.NODE_ENV === "production") return;
-      const hook = { kinds: KINDS, assets, tools, gl, scene, drawing, ground, picture, camera, shot, street, state: state.current, eye: EYE, sweep, settings, light, hold: (on: boolean) => (cameraTaken.current = on) };
+      const hook = { kinds: KINDS, shown, assets, tools, gl, scene, drawing, ground, picture, camera, shot, street, state: state.current, eye: EYE, sweep, settings, light, hold: (on: boolean) => (cameraTaken.current = on) };
       Object.assign(window, { __anamorph: hook });
       if (location.search.includes("audit") && !(window as { __audited?: boolean }).__audited) {
         (window as { __audited?: boolean }).__audited = true;
@@ -975,6 +986,9 @@ function makeScene(kind: DrawingKind) {
         }
       }
       const working = scenePhase.current === "live";
+      // Nor while one is wiped off, built, drawn on or swept through: Auto stepping down then rebuilt every shader in
+      // view at once, a freeze of a second or more in the middle of a switch. Judged only once it is still again.
+      if (s.phase !== "drawn" || s.compiling || s.sweep) holdQuality(2500);
       // Behind the loader the paintings not showing hang under the sidewalk with this one, drawn every frame (into the
       // artist's picture too), so their shaders are built while the engine builds everything else; a moment after the
       // scene shows they are put away, kept for when they are asked for.
@@ -1336,7 +1350,7 @@ export function makeDay(kind: DrawingKind): DayDefinition {
       redraw: { type: "action", label: "Back to chalk" }
     },
     phonePills: ["quick"],
-    prompt: { title: "Walk around the\nchalk drawing", detail: "Then tap it", high: true, phoneUp: 60, phoneAside: true },
+    prompt: { title: "Walk around the\nchalk drawing", detail: "Then tap it", high: true, phoneUp: 120, phoneAside: true },
     hint: "Drag to walk round the chalk drawing and scroll to step in or back. Tap the drawing and it becomes real; tap it again to turn it back to chalk. Pick another chalk painting in the panel and it is wiped off and the next drawn on.",
     notes: `A chalk drawing of ${KINDS[kind].name} on a Brooklyn sidewalk. Walk round it, then tap it: the view sweeps through the one spot it was drawn for and, there, it becomes real.`,
     Scene: makeScene(kind)
