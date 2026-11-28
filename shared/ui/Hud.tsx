@@ -502,6 +502,7 @@ const CHOICES: { value: QualityChoice; label: string }[] = [
 type HudProps = {
   day: CodevemberDay;
   hint?: string;
+  hintControls?: string;
   prompt?: { title: string; detail?: string; high?: boolean; low?: boolean; phoneUp?: number; phoneAside?: boolean };
   notes?: string;
   overview?: OverviewSection[];
@@ -529,7 +530,7 @@ function ControlRow({ name, setting, store }: { name: string; setting: Setting; 
   );
 }
 
-export function Hud({ day, hint, prompt, notes, overview, Overlay, settings, phonePills, phoneDock, phoneDockPills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
+export function Hud({ day, hint, hintControls, prompt, notes, overview, Overlay, settings, phonePills, phoneDock, phoneDockPills, tier, choice, onChoice, isWebGPU, fpsRef }: HudProps) {
   const router = useRouter();
   const [panelOpen, setPanelOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -632,7 +633,11 @@ export function Hud({ day, hint, prompt, notes, overview, Overlay, settings, pho
             <motion.div className="cv-hint-room" initial={false} animate={{ height: touched ? 0 : "auto", opacity: touched ? 0 : 1 }} transition={SETTLE}>
               <p className="cv-hint">
                 {hint ? <strong>{hint} </strong> : null}
-                <span className="cv-hint-controls">{isTouch ? "Drag to look, pinch to zoom." : "Drag to orbit, WASD to fly, scroll to zoom."}</span>
+                {isTouch || hintControls === undefined ? (
+                  <span className="cv-hint-controls">{isTouch ? "Drag to look, pinch to zoom." : "Drag to orbit, WASD to fly, scroll to zoom."}</span>
+                ) : hintControls ? (
+                  <span className="cv-hint-controls">{hintControls}</span>
+                ) : null}
               </p>
             </motion.div>
           </motion.div>

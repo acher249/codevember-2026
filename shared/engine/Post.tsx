@@ -35,7 +35,7 @@ import {
 } from "three/tsl";
 import { ao } from "three/addons/tsl/display/GTAONode.js";
 import { chromaticAberration } from "three/addons/tsl/display/ChromaticAberrationNode.js";
-import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
+import DepthOfFieldNode, { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { fxaa } from "three/addons/tsl/display/FXAANode.js";
 import { gaussianBlur } from "three/addons/tsl/display/GaussianBlurNode.js";
@@ -117,6 +117,33 @@ export const hazeLink = {
 
 // Every node in a pass graph, each once: the passes, blurs and copies that own render targets among them.
 const BASE_DISPOSE = THREE.Node.prototype.dispose;
+// three's depth of field with its bokeh blurs at `scale` of the canvas rather than half; the circle of confusion and
+// the composite stay full size. The taps step in the source's UV by a full-size texel (`_invSize`, never the target's),
+// so the blur's radius on screen is the same at any target size. The near field's softened circle of confusion is drawn
+// at twice that scale (at most full size), its kernel stepped in full-size texels as before.
+class ScaledDepthOfFieldNode extends (DepthOfFieldNode as any) {
+  scale: number;
+  constructor(scale: number, ...args: any[]) {
+    super(...args);
+    this.scale = scale;
+    const soft = Math.min(1, scale * 2);
+    (this as any)._CoCBlurNode.dispose();
+    (this as any)._CoCBlurNode = gaussianBlur((this as any)._CoCTextureNode, soft, 2, { resolutionScale: soft });
+  }
+  setSize(width: number, height: number) {
+    const self = this as any;
+    self._invSize.value.set(1 / width, 1 / height);
+    self._CoCRT.setSize(width, height);
+    self._compositeRT.setSize(width, height);
+    const x = Math.max(1, Math.round(width * this.scale));
+    const y = Math.max(1, Math.round(height * this.scale));
+    self._CoCBlurredRT.setSize(x, y);
+    self._blur64RT.setSize(x, y);
+    self._blur16NearRT.setSize(x, y);
+    self._blur16FarRT.setSize(x, y);
+  }
+}
+
 function passNodes(root: any) {
   const seen = new Set<any>();
   const queue = [root];
@@ -285,7 +312,10 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
     if (depthOfField && (tier !== "low" || depthOfField.onLow)) {
       const seen = scenePass.getViewZNode() as any;
       const viewZ = depthOfField.depth ? depthOfField.depth(seen) : seen;
-      const blurred: any = dof(color, isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ, focusDistance, uniform(depthOfField.range), focusBlur);
+      const depth = isSky ? isSky.select((focusDistance as any).negate(), viewZ) : viewZ;
+      const blurred: any = depthOfField.blurScale
+        ? new ScaledDepthOfFieldNode(depthOfField.blurScale, convertToTexture(color as any), depth, focusDistance, uniform(depthOfField.range), focusBlur)
+        : dof(color, depth, focusDistance, uniform(depthOfField.range), focusBlur);
       color = mix(blurred, color, postSharp) as any;
       held = blurred.getTextureNode();
     }
@@ -413,8 +443,21 @@ export function Post({ look, quality, hasHaze, bounce = true, halfBounce = false
   useFrame(() => {
     if (phase.current === "hold" || postRest.current) return;
     if (temporal === false) uniforms.smoothing.value = gl.getPixelRatio() < 1.75 ? 1 - postSharp.value : 0;
+    // A compile that outlasted the warm-up's wait (HubStage) can still have a pass's own render target and MRT set on the
+    // renderer; drawn into that, the frame never reaches the screen (a black canvas, and pipeline errors for the final
+    // quad's missing outputs). So the frame always goes to the screen, and the compile's state is put back after.
+    const target = gl.getRenderTarget();
+    const targets = target ? gl.getMRT() : null;
+    if (target) {
+      gl.setRenderTarget(null);
+      gl.setMRT(null);
+    }
     if (postBypass.current) gl.render(scene, camera);
     else stack.render();
+    if (target) {
+      gl.setRenderTarget(target);
+      gl.setMRT(targets);
+    }
   }, 1);
 
   return null;

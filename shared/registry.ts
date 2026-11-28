@@ -27,5 +27,6 @@ export const dayLoaders: Record<string, () => Promise<{ default: DayDefinition }
   "23-magma": () => import("../23-magma"),
   "24-nest": () => import("../24-nest"),
   "25-veil": () => import("../25-veil"),
-  "26-anamorph": () => import("../26-anamorph")
+  "26-anamorph": () => import("../26-anamorph"),
+  "27-burrow": () => import("../27-burrow")
 };

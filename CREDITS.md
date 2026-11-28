@@ -225,3 +225,23 @@ The street, its trees and cars, the six paintings and everything in them (water,
 | [Rock Face 03](https://polyhaven.com/a/rock_face_03) (`public/assets/26-anamorph/crystal/rock_face_03_*`) | Dario Barresi and Rico Cilliers, [Poly Haven](https://polyhaven.com) | CC0 |
 | [Long White Tiles](https://polyhaven.com/a/long_white_tiles) (`public/assets/26-anamorph/subway/long_white_tiles_*`) | Jenelle van Heerden and Sergej Majboroda, [Poly Haven](https://polyhaven.com) | CC0 |
 | [Tarred Gravel](https://polyhaven.com/a/tarred_gravel) (`public/assets/26-anamorph/subway/tarred_gravel_*`) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |
+
+## Burrow
+
+The cliff's rock, the tunnels, caverns, finds, torches, ladders, grass and trees are made in code over these scans and models. The music and sounds are this site's own and are not in this repo.
+
+| Asset | By | License |
+| --- | --- | --- |
+| [Rock Face 03](https://polyhaven.com/a/rock_face_03) (`public/assets/27-burrow/rock_face_03_*`) | Dario Barresi and Rico Cilliers, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Rock Face](https://polyhaven.com/a/rock_face) (`public/assets/27-burrow/rock_face_*`) | Greg Zaal and Dario Barresi, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Cliff Side](https://polyhaven.com/a/cliff_side) (`public/assets/27-burrow/cliff_side_*`) | James Ray Cock, Jenelle van Heerden and Dario Barresi, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Rock Moss Set 02](https://polyhaven.com/a/rock_moss_set_02) (`public/assets/27-burrow/rock_moss_set_02/`) | Kless Gyzen, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Bark Brown 02](https://polyhaven.com/a/bark_brown_02) (`public/assets/27-burrow/bark_brown_02_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Pine Bark](https://polyhaven.com/a/pine_bark) (`public/assets/27-burrow/pine_bark_*`) | Dimitrios Savva, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Dry Decay Leaves](https://polyhaven.com/a/dry_decay_leaves) (`public/assets/27-burrow/dry_decay_leaves_*`) | Amal Kumar, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Forest Leaves 02](https://polyhaven.com/a/forest_leaves_02) (`public/assets/27-burrow/forest_leaves_02_*`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Dead Tree Trunk](https://polyhaven.com/a/dead_tree_trunk) (`public/assets/27-burrow/dead_tree_trunk/`) | Rob Tuytel, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Dead Tree Trunk 02](https://polyhaven.com/a/dead_tree_trunk_02) (`public/assets/27-burrow/dead_tree_trunk_02/`) | Jenelle van Heerden and Rico Cilliers, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Shrub 03](https://polyhaven.com/a/shrub_03) (`public/assets/27-burrow/shrub_03/`) | Rico Cilliers, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Hatchet](https://polyhaven.com/a/hatchet) (`public/assets/27-burrow/hatchet/`) | James Ray Cock and Ulan Cabanilla, [Poly Haven](https://polyhaven.com) | CC0 |
+| [Moss 003](https://ambientcg.com/view?id=Moss003) (`public/assets/27-burrow/moss_*`) | [ambientCG](https://ambientcg.com) | CC0 |

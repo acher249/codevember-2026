@@ -150,6 +150,11 @@ Creating a fun, interactive three.js experience every day of November. One word,
       <b>Day 26: <a href="26-anamorph">Anamorph</a></b><br>
       <a href="26-anamorph">Code</a> · <a href="https://adamwebsite.com/codevember/26-anamorph/">Live</a>
     </td>
+    <td align="center" valign="top">
+      <a href="27-burrow"><img src="videos/27-burrow.gif" alt="Burrow" width="260"></a><br>
+      <b>Day 27: <a href="27-burrow">Burrow</a></b><br>
+      <a href="27-burrow">Code</a> · <a href="https://adamwebsite.com/codevember/27-burrow/">Live</a>
+    </td>
   </tr>
 </table>
 
@@ -195,6 +200,7 @@ You need [Node.js](https://nodejs.org) 20.9 or newer, and a browser with WebGPU,
 | 24 | [Nest](24-nest) | Three chicks shivering in a snowy nest, and a smart thermostat screwed to the tree. Turn it up and the snow melts, the leaves come out and the chicks thaw, cheer and put on sunglasses. Leave it alone and it goes Away. |
 | 25 | [Veil](25-veil) | Three veiled statues, close, in glass or marble before a world gone to soft light. Change their stone and the light behind them; switch on Glitch and they mosh between stones. |
 | 26 | [Anamorph](26-anamorph) | A chalk drawing of a swimming pool on a Brooklyn sidewalk. Walk round it, then tap it: the view sweeps to the one spot it was drawn for and it becomes real. Or pick a lava crack, a reef, a crystal cave, a pit or a subway. |
+| 27 | [Burrow](27-burrow) | A granite cliff at the edge of a forest. Walk up and dig in with a pick, light the dark with torches, lean ladders on ledges and tunnel on into caverns that never end: a glowworm grotto, a dinosaur's tomb, crystal pools, an abandoned camp. Keep what you find, and photograph it. |
 
 ## Controls
 

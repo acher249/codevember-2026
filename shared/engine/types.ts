@@ -107,7 +107,9 @@ export type SideBlur = { from: number; to: number; amount: number; left?: { from
 // depth, if a day gives it, reshapes the distances the blur reads (view space z, negative ahead), say to hold a part of
 // the view in focus whatever its distance; the air still reads the true ones.
 // `onLow` keeps the blur on the low tier too, for a day whose look depends on it (it is otherwise left off there).
-export type DepthOfField = { range: number; air?: number; airRate?: number; airBehindFocus?: number; sharpSky?: boolean; depth?: (viewZ: Node) => Node; onLow?: boolean };
+// `blurScale`: the bokeh blurs drawn at this fraction of the canvas instead of half (0.25: a quarter), for a wide blur
+// that would otherwise thrash the cache; the blur's size on screen stays the same. Unset, three's own half resolution.
+export type DepthOfField = { range: number; air?: number; airRate?: number; airBehindFocus?: number; sharpSky?: boolean; depth?: (viewZ: Node) => Node; onLow?: boolean; blurScale?: number };
 
 // Keeps the camera near where it starts: `turn` degrees of orbit each way, and `move` units of travel each way for the point
 // it looks at and for its distance from that point. Either can instead give each way its own amount. Travel is measured
@@ -151,6 +153,9 @@ export type DayDefinition = {
   passes?: { bounce?: boolean; halfBounce?: boolean; haze?: boolean; overlay?: boolean; veil?: boolean; depthOfField?: DepthOfField; sideBlur?: SideBlur; chromatic?: number; rush?: boolean; toneMapping?: "none"; temporal?: false; occlusion?: false };
   settings?: SettingsSchema;
   hint?: string;
+  // In place of the default controls line after the hint on desktop ("Drag to orbit, WASD to fly, scroll to zoom."),
+  // for a day whose own hint already says how it is played; "" for none. Unset, the default as before.
+  hintControls?: string;
   // How the scene is made, in a couple of sentences. Shown under the wordmark on desktop.
   notes?: string;
   // How it is built, in more depth: a few short sections behind a collapsed panel under the notes, on desktop.

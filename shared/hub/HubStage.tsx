@@ -129,6 +129,9 @@ function SceneWarmup({ phase, onCompiling, onReady, judge, hold }: { phase: RefO
   const run = useRef({ frames: 0, smooth: 0, gpuDone: false, gpuDoneAt: 0, finished: false, warmAt: 0, probeAt: 0, probeFrames: 0, steps: 0 });
   const unhidden = useRef<THREE.Object3D[]>([]);
   const compiling = useRef({ pending: 0, lastNewAt: 0, release: () => {} });
+  // Whether the ahead-of-time compile has finished. When it outlasts its wait the scene goes on, but frames timed while it
+  // is still building are slow for that reason alone, so Auto must not judge the tier on them.
+  const precompiled = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +156,13 @@ function SceneWarmup({ phase, onCompiling, onReady, judge, hold }: { phase: RefO
         });
         try {
           // A phone's driver can leave a compile hanging. Give up waiting after a while; the first frames build the rest.
-          await Promise.race([precompile(gl, scene, camera), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
+          precompiled.current = false;
+          const compile = precompile(gl, scene, camera);
+          const settle = () => {
+            precompiled.current = true;
+          };
+          compile.then(settle, settle);
+          await Promise.race([compile, new Promise((resolve) => window.setTimeout(resolve, 15000))]);
         } catch (error) {
           // The first frame compiles whatever is left, as before.
           console.warn(error);
@@ -216,7 +225,7 @@ function SceneWarmup({ phase, onCompiling, onReady, judge, hold }: { phase: RefO
     if (!state.probeAt && !(overdue || state.smooth >= 4 || performance.now() - state.gpuDoneAt > 2500)) return;
     // Ready to show. On Auto, a moment's frames first, to see whether this tier keeps up.
     const stepDown = judge.current.stepDown;
-    if (!overdue && stepDown && !judge.current.skip && state.steps < 2) {
+    if (!overdue && stepDown && !judge.current.skip && precompiled.current && state.steps < 2) {
       const now = performance.now();
       if (!state.probeAt) {
         state.probeAt = now;
@@ -511,6 +520,7 @@ export default function HubStage({ day, onStep }: { day: CodevemberDay | null; o
         <Hud
           day={day}
           hint={shown ? definition?.hint : undefined}
+          hintControls={shown ? definition?.hintControls : undefined}
           prompt={shown ? definition?.prompt : undefined}
           notes={shown ? definition?.notes : undefined}
           overview={shown ? definition?.overview : undefined}

@@ -432,6 +432,7 @@ export default function Stage({ day, onStep }: { day: CodevemberDay; onStep: (st
       <Hud
         day={day}
         hint={loaded?.day.day === day.day ? definition?.hint : undefined}
+        hintControls={loaded?.day.day === day.day ? definition?.hintControls : undefined}
         prompt={loaded?.day.day === day.day ? definition?.prompt : undefined}
         notes={loaded?.day.day === day.day ? definition?.notes : undefined}
         overview={loaded?.day.day === day.day ? definition?.overview : undefined}
